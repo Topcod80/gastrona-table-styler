@@ -1,7 +1,7 @@
-# POC 0.2 verification
+# POC 0.25 verification
 
-Local JavaScript syntax and dependency-free logic checks passed for the original actions and the game layer: 2/4/6 guest layouts, collection swaps without transform changes, reset/undo, metadata-only storage, restore validation and stacking order.
+Local geometry checks: 2/4/6 templates, end-seat angles, guest-relative fork/knife/glass positions, glass-to-plate proximity, group-transform distance invariants, preset spacing, whole-group boundary correction, portrait/wide scenes.
 
-The GitHub Actions workflow is the deployment gate and records the mobile WebKit result for each commit. It runs original interactions plus all collection variants, layouts, preservation checks, save/restore/reload, corrupt/blocked storage and responsive layouts. Deployment is followed by served-file byte comparison.
+The GitHub Actions run for each commit records the mobile WebKit result. Its browser suite covers existing collections/undo/layering and the focused editor, group and item transforms, 6-guest layout, contact/compression controls, IndexedDB photo+scene save, automatic reload restoration, missing-photo/quota failures and mobile viewport sizes. Deployment is gated on these checks and followed by byte verification.
 
-Physical iPhone camera, HEIC and real multi-touch still require device testing. Synthetic images are used by the automated tests; no user table photos are committed or uploaded.
+Synthetic images only. Actual iPhone camera/HEIC, real multi-touch and Safari storage retention require device testing; automated desktop WebKit is not proof of those physical-device behaviors.

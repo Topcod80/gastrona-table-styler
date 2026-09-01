@@ -1,125 +1,86 @@
-const assert = require('node:assert/strict');
-let playwright;
-try { playwright = require('playwright'); } catch { playwright = require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES + '/playwright'); }
+const assert=require('node:assert/strict');
+let pw;try{pw=require('playwright')}catch{pw=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES+'/playwright')}
 (async()=>{
-  const browser = await playwright[process.env.BROWSER || 'webkit'].launch({headless:true});
-  try {
-    const context = await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:3,isMobile:true,hasTouch:true});
-    const page = await context.newPage(); const errors=[], outgoing=[];
-    page.on('pageerror',error=>errors.push(error.message));
-    page.on('request',r=>{if(!r.url().startsWith(process.env.BASE_URL||'http://127.0.0.1:8000')&&!/^(blob:|data:)/.test(r.url()))outgoing.push(r.url());assert.equal(r.method(),'GET');});
-    await page.goto(process.env.BASE_URL || 'http://127.0.0.1:8000');
-    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
-    for(const type of ['plate','glass','fork','knife'])await page.getByRole('button',{name:`Add ${type}`,exact:true}).tap();
-    assert.equal(await page.locator('.piece').count(),4);
-    await page.locator('.piece').first().tap({position:{x:14,y:50}});
-    await page.locator('#size').press('ArrowRight');
-    await page.locator('#rotation').press('ArrowRight');
-    assert.match(await page.locator('.selected').getAttribute('style'),/rotate\(1deg\) scale\(1.01\)/);
-    await page.getByRole('button',{name:'Duplicate',exact:true}).tap();assert.equal(await page.locator('.piece').count(),5);
-    await page.getByRole('button',{name:'Delete',exact:true}).tap();assert.equal(await page.locator('.piece').count(),4);
-    await page.getByRole('button',{name:'Undo',exact:true}).tap();assert.equal(await page.locator('.piece').count(),5);
-    // Synthetic touch pointer sequence exercises drag, pinch, twist and cancellation.
-    const result = await page.evaluate(()=>{
-      const stage=document.getElementById('stage'),el=document.querySelector('.selected');
-      const rect=stage.getBoundingClientRect(); const initial=el.style.left;
-      const realCapture=stage.setPointerCapture;stage.setPointerCapture=()=>{};
-      function fire(target,type,id,x,y){target.dispatchEvent(new PointerEvent(type,{bubbles:true,cancelable:true,pointerId:id,pointerType:'touch',clientX:rect.left+x,clientY:rect.top+y}));}
-      fire(el,'pointerdown',1,100,100);fire(stage,'pointermove',1,130,120);
-      const dragged=el.style.left!==initial;
-      fire(stage,'pointerdown',2,200,120);fire(stage,'pointermove',2,220,160);
-      const transformed=el.style.transform;
-      fire(stage,'pointercancel',2,220,160);fire(stage,'pointerup',1,130,120);
-      stage.setPointerCapture=realCapture;
-      return {dragged,transformed};
-    });
-    assert.equal(result.dragged,true);assert.ok(!result.transformed.includes('rotate(1deg)'));
-    // Local synthetic PNG photo, repeated selection and invalid-format handling.
-    const png=await page.evaluate(()=>{const c=document.createElement('canvas');c.width=600;c.height=400;const x=c.getContext('2d');x.fillStyle='#bda98c';x.fillRect(0,0,600,400);return c.toDataURL().split(',')[1];});
-    const file={name:'test-table.png',mimeType:'image/png',buffer:Buffer.from(png,'base64')};
-    await page.locator('#photo-input').setInputFiles(file);
-    await page.waitForFunction(()=>document.getElementById('status').textContent.startsWith('Photo ready'));
-    assert.match(await page.locator('#table-photo').getAttribute('src'),/^blob:/);
-    await page.locator('#photo-input').setInputFiles({name:'broken.png',mimeType:'image/png',buffer:Buffer.from('invalid')});
-    await page.waitForFunction(()=>document.getElementById('status').textContent.includes('could not be opened'));
-    assert.match(await page.locator('#table-photo').getAttribute('src'),/^blob:/);
-    await page.locator('#photo-input').setInputFiles(file);
-    await page.waitForFunction(()=>document.getElementById('status').textContent.startsWith('Photo ready'));
-    await page.setViewportSize({width:844,height:390});
-    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
-    await page.setViewportSize({width:390,height:844});
-    await page.screenshot({path:'test-results/mobile.png',fullPage:true});
-    await page.getByRole('button',{name:'Remove photo'}).tap();assert.equal(await page.locator('#table-photo').getAttribute('src'),null);
-    await page.reload();assert.equal(await page.locator('.piece').count(),0);assert.equal(await page.locator('#table-photo').getAttribute('src'),null);
-    // POC 0.2 game flow: all layouts and independent collections.
-    const snapshot=()=>page.locator('.piece').evaluateAll(nodes=>nodes.map(e=>({id:e.dataset.id,label:e.getAttribute('aria-label'),style:e.getAttribute('style'),art:e.innerHTML})));
-    for(const guests of [2,4,6]){
-      await page.locator('#guests-'+guests).tap();
-      assert.equal(await page.locator('.piece').count(),guests*4);
-      assert.equal(await page.locator('#guests-'+guests).getAttribute('aria-pressed'),'true');
-    }
-    // Positions are guest-relative; opposing row is rotated 180 degrees.
-    const auto=await snapshot();
-    const layout=await page.locator('.piece').evaluateAll(nodes=>nodes.slice(12,16).map(e=>({x:parseFloat(e.style.left),y:parseFloat(e.style.top)})));
-    assert.ok(layout[1].x<layout[0].x && layout[2].x>layout[0].x && layout[3].x>layout[0].x && layout[3].y<layout[0].y);
-    assert.match(auto[0].style,/rotate\(180deg\)/);
-    for(const [category,names,types] of [['plates',['Sage','Cobalt','Ivory'],['plate']],['cutlery',['Brass','Ink','Silver'],['fork','knife']],['glassware',['Amber','Rose','Clear'],['glass']]]){
-      for(const name of names){
-        const before=await snapshot();
-        await page.getByRole('button',{name:'Change '+category+' to '+name,exact:true}).tap();
-        const after=await snapshot();
-        assert.deepEqual(after.map(({art,...rest})=>rest),before.map(({art,...rest})=>rest));
-        for(let i=0;i<after.length;i++){
-          if(types.some(t=>after[i].label.startsWith(t+' ')))assert.notEqual(after[i].art,before[i].art);
-          else assert.equal(after[i].art,before[i].art);
-        }
-      }
-    }
-    await page.getByRole('button',{name:'Change plates to Sage',exact:true}).tap();
-    await page.locator('#undo').tap();assert.equal(await page.locator('#plates-classic').getAttribute('aria-pressed'),'true');
-    // Select an exposed plate edge, edit it, then switch collections without re-layout.
-    await page.locator('.piece').first().tap({position:{x:12,y:40}});
-    await page.locator('#size').press('ArrowRight');await page.locator('#rotation').press('ArrowLeft');
-    const edited=await snapshot();
-    await page.locator('#guests-6').tap();assert.deepEqual(await snapshot(),edited);
-    await page.getByRole('button',{name:'Change plates to Cobalt',exact:true}).tap();
-    assert.deepEqual((await snapshot()).map(({art,...rest})=>rest),edited.map(({art,...rest})=>rest));
-    const firstId=(await snapshot())[0].id;
-    await page.locator('#forward').tap();assert.equal((await snapshot()).at(-1).id,firstId);
-    await page.locator('#undo').tap();assert.equal((await snapshot())[0].id,firstId);
-    await page.locator('#duplicate').tap();assert.equal(await page.locator('.piece').count(),25);
-    await page.locator('#delete').tap();assert.equal(await page.locator('.piece').count(),24);
-    await page.locator('#save').tap();
-    const saved=await page.evaluate(()=>localStorage.getItem('table-studio.arrangement.v2'));
-    assert.ok(saved);assert.ok(!/blob:|data:|photo/i.test(saved));assert.equal(JSON.parse(saved).items.length,24);
-    await page.locator('#reset').tap();assert.equal(await page.locator('.piece').count(),0);
-    await page.locator('#undo').tap();assert.equal(await page.locator('.piece').count(),24);
-    await page.locator('#photo-input').setInputFiles(file);
-    await page.waitForFunction(()=>document.getElementById('status').textContent.startsWith('Photo ready'));
-    await page.locator('#restore').tap();assert.match(await page.locator('#table-photo').getAttribute('src'),/^blob:/);
-    await page.reload();assert.equal(await page.locator('.piece').count(),0);assert.equal(await page.locator('#table-photo').getAttribute('src'),null);
-    await page.locator('#restore').tap();assert.equal(await page.locator('.piece').count(),24);
-    await page.locator('#save').tap();
-    assert.deepEqual(JSON.parse(await page.evaluate(()=>localStorage.getItem('table-studio.arrangement.v2'))).items,JSON.parse(saved).items);
-    // Reset keeps the photo, and undo restores a replaced Auto Set in one step.
-    const restored=await snapshot();
-    await page.locator('#guests-2').tap();assert.equal(await page.locator('.piece').count(),8);
-    await page.locator('#undo').tap();assert.deepEqual(await snapshot(),restored);
-    await page.evaluate(()=>localStorage.setItem('table-studio.arrangement.v2','{broken'));
-    await page.locator('#restore').tap();assert.deepEqual(await snapshot(),restored);
-    assert.match(await page.locator('#status').textContent(),/Could not restore/);
-    await page.evaluate(()=>{window.originalSetItem=Storage.prototype.setItem;Storage.prototype.setItem=function(){throw new Error('Storage blocked')}});
-    await page.locator('#save').tap();assert.match(await page.locator('#status').textContent(),/Could not save/);
-    await page.evaluate(()=>{Storage.prototype.setItem=window.originalSetItem;localStorage.removeItem('table-studio.arrangement.v2')});
-    await page.locator('#restore').tap();assert.match(await page.locator('#status').textContent(),/No saved arrangement/);
-    for(const width of [320,390,844]){
-      await page.setViewportSize({width,height:width===844?390:844});
-      assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
-    }
-    await page.setViewportSize({width:390,height:844});
-    await page.screenshot({path:'test-results/mobile-v02.png',fullPage:true});
-    console.log('PASS POC 0.2: all guest layouts, all nine collection choices, category isolation, transforms, same-count preservation, layers, reset/undo, save/restore/reload, no stored photos, corrupt and blocked storage, narrow/mobile/landscape layouts.');
-    assert.deepEqual(errors,[]);assert.deepEqual(outgoing,[]);
-    console.log('PASS: mobile layout, four items, size, rotation, duplicate, delete, undo, drag, pinch/twist, cancel, local photo, invalid photo recovery, replacement, orientation resize, removal, refresh, zero external requests.');
-  } finally {await browser.close();}
-})().catch(e=>{console.error(e);process.exit(1);});
+ const browser=await pw[process.env.BROWSER||'webkit'].launch({headless:true});
+ try{
+  const context=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:3,isMobile:true,hasTouch:true});
+  const page=await context.newPage(),errors=[],external=[];page.setDefaultTimeout(15000);
+  const base=process.env.BASE_URL||'http://127.0.0.1:8000';
+  page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(!r.url().startsWith(base)&&!r.url().startsWith('blob:')&&!r.url().startsWith('data:'))external.push(r.url());assert.equal(r.method(),'GET')});
+  const ready=async()=>{await page.evaluate(()=>window.TableStudioReady)};
+  const state=()=>page.evaluate(()=>JSON.parse(JSON.stringify(scene())));
+  const tap=id=>page.locator('#'+id).tap();
+  const near=(a,b)=>assert.ok(Math.abs(a-b)<1e-7,`${a} != ${b}`);
+  const distances=(list,ratio)=>list.slice(1).map(i=>Math.hypot(i.x-list[0].x,(i.y-list[0].y)/ratio));
+  await page.goto(base);await ready();
+  const png=await page.evaluate(()=>{const c=document.createElement('canvas');c.width=1200;c.height=800;const x=c.getContext('2d');x.fillStyle='#bba78a';x.fillRect(0,0,1200,800);x.fillStyle='#d6c4a8';x.fillRect(100,80,1000,640);return c.toDataURL().split(',')[1]});
+  const file={name:'synthetic-table.png',mimeType:'image/png',buffer:Buffer.from(png,'base64')};
+  await page.locator('#photo-input').setInputFiles(file);await page.waitForFunction(()=>!!photoBlob);
+  for(const n of [2,4,6]){await tap('guests-'+n);const s=await state();assert.equal(s.items.length,n*4);assert.equal(s.groups.length,n);}
+  let s=await state();assert.ok(s.groups.some(g=>g.rotation===90));assert.ok(s.groups.some(g=>g.rotation===-90));
+  for(const g of s.groups){const list=s.items.filter(i=>i.groupId===g.id),p=list.find(i=>i.type==='plate'),glass=list.find(i=>i.type==='glass');assert.ok(Math.hypot(glass.x-p.x,(glass.y-p.y)/s.sceneRatio)<p.scale*.24)}
+  // Collection changes still preserve grouping and all geometry.
+  for(const [category,names] of [['plates',['Sage','Cobalt','Ivory']],['cutlery',['Brass','Ink','Silver']],['glassware',['Amber','Rose','Clear']]])for(const name of names){const before=await state();await page.getByRole('button',{name:'Change '+category+' to '+name,exact:true}).tap();const after=await state();assert.deepEqual(after.items.map(({collection,...i})=>i),before.items.map(({collection,...i})=>i));assert.deepEqual(after.groups,before.groups);}
+  // A plate tap opens the focus editor and selects its four related pieces.
+  await page.locator('.piece[aria-label^="plate"]').first().tap();await page.waitForFunction(()=>focused&&stage.clientWidth>400);
+  assert.equal(await page.locator('.piece.selected').count(),4);
+  assert.equal(await page.locator('body').evaluate(e=>e.classList.contains('editing')),true);
+  const assertVisible=async()=>{const r=await page.locator('#inspector').boundingBox();assert.ok(r.y>=0&&r.y+r.height<=845);const b=await page.locator('#canvas-window').boundingBox();assert.ok(b.height>=200&&b.y+b.height<=r.y+1);};
+  await assertVisible();
+  let before=await state();const groupId=before.items[0].groupId,list=before.items.filter(i=>i.groupId===groupId),scale=before.groups.find(g=>g.id===groupId).scale;
+  await page.locator('#size').press('ArrowRight');let after=await state();const grown=after.items.filter(i=>i.groupId===groupId),factor=after.groups.find(g=>g.id===groupId).scale/scale;
+  distances(grown,after.sceneRatio).forEach((d,i)=>near(d,distances(list,before.sceneRatio)[i]*factor));
+  assert.deepEqual(after.items.filter(i=>i.groupId!==groupId),before.items.filter(i=>i.groupId!==groupId));
+  await tap('tool-rotation');before=await state();await page.locator('#rotation').press('ArrowLeft');after=await state();
+  distances(after.items.filter(i=>i.groupId===groupId),after.sceneRatio).forEach((d,i)=>near(d,distances(before.items.filter(i=>i.groupId===groupId),before.sceneRatio)[i]));
+  await tap('tool-spacing');before=await state();await tap('spacing-formal');after=await state();
+  distances(after.items.filter(i=>i.groupId===groupId),after.sceneRatio).forEach((d,i)=>near(d,distances(before.items.filter(i=>i.groupId===groupId),before.sceneRatio)[i]*1.16));
+  await tap('spacing-compact');await tap('spacing-standard');
+  await tap('tool-tilt');await page.locator('#tilt').press('ArrowLeft');assert.equal((await state()).items.find(i=>i.groupId===groupId&&i.type==='plate').tilt,.99);
+  await tap('duplicate');assert.equal((await state()).items.length,28);assert.equal((await state()).groups.length,7);assert.equal(await page.locator('.piece.selected').count(),4);
+  await tap('delete');assert.equal((await state()).items.length,24);await tap('undo');assert.equal((await state()).items.length,28);await tap('undo');assert.equal((await state()).items.length,24);
+  await tap('forward');assert.equal((await state()).items.at(-1).groupId,groupId);await tap('undo');
+  // Real browser PointerEvents drive the unchanged drag/pinch/twist event path.
+  const transform=await page.evaluate(()=>{
+   const before=JSON.parse(JSON.stringify(members()));const r=stage.getBoundingClientRect(),target=document.querySelector('.piece.selected');
+   const original=stage.setPointerCapture;stage.setPointerCapture=()=>{};
+   const emit=(type,id,x,y,node=stage)=>node.dispatchEvent(new PointerEvent(type,{bubbles:true,cancelable:true,pointerId:id,pointerType:'touch',clientX:r.left+x,clientY:r.top+y}));
+   emit('pointerdown',1,180,120,target);emit('pointermove',1,195,135);emit('pointerdown',2,240,135);emit('pointermove',2,250,165);emit('pointercancel',2,250,165);emit('pointerup',1,195,135);stage.setPointerCapture=original;
+   return {before,after:JSON.parse(JSON.stringify(members())),ratio:sceneRatio,pointers:pointers.size};
+  });
+  assert.equal(transform.after.length,4);assert.equal(transform.pointers,0);assert.notEqual(transform.before[0].x,transform.after[0].x);
+  const gf=transform.after[0].scale/transform.before[0].scale;distances(transform.after,transform.ratio).forEach((d,i)=>near(d,distances(transform.before,transform.ratio)[i]*gf));
+  // Item mode edits and deletes one piece, not its siblings.
+  await tap('mode-item');assert.equal(await page.locator('.piece.selected').count(),1);await tap('tool-size');before=await state();await page.locator('#size').press('ArrowRight');after=await state();assert.equal(after.items.filter((i,n)=>JSON.stringify(i)!==JSON.stringify(before.items[n])).length,1);
+  await tap('duplicate');assert.equal((await state()).items.length,25);assert.equal((await state()).groups.length,6);await tap('delete');assert.equal((await state()).items.length,24);await tap('undo');await tap('undo');
+  // Back to a complete setting, ensure zoom and toolbar coexist on a narrow screen.
+  await tap('mode-setting');await tap('zoom');await tap('zoom');await assertVisible();
+  await page.screenshot({path:'test-results/focused-six-guests.png',fullPage:false});
+  await tap('done');assert.equal(await page.locator('body').evaluate(e=>e.classList.contains('editing')),false);
+  // Save the photo and scene atomically, then auto-restore both on reload.
+  const saved=await state();await tap('save');await page.waitForFunction(()=>!busy&&document.getElementById('storage-note').textContent.startsWith('Photo +'));
+  const record=await page.evaluate(async()=>{const r=await TableStorage.read();return {bytes:r.photo.size,type:r.photo.type,hadPhoto:r.hadPhoto,version:r.scene.version}});
+  assert.equal(record.bytes,file.buffer.length);assert.equal(record.hadPhoto,true);assert.equal(record.version,25);
+  await page.reload();await ready();assert.deepEqual(await state(),saved);assert.match(await page.locator('#table-photo').getAttribute('src'),/^blob:/);assert.equal(await page.evaluate(()=>photoBlob.size),file.buffer.length);
+  await tap('reset');assert.equal((await state()).items.length,0);assert.ok(await page.evaluate(()=>!!photoBlob));await tap('undo');assert.deepEqual(await state(),saved);
+  await tap('guests-2');await tap('restore');await page.waitForFunction(()=>!busy&&items.length===24);assert.deepEqual(await state(),saved);await tap('undo');assert.equal((await state()).items.length,8);await tap('restore');await page.waitForFunction(()=>!busy&&items.length===24);
+  // Browser-storage errors are explicit and cannot silently replace the scene.
+  await page.evaluate(()=>{window.originalWrite=TableStorage.write;TableStorage.write=async()=>{throw Error('quota')}});await tap('save');await page.waitForFunction(()=>!busy);assert.match(await page.locator('#storage-note').textContent(),/NOT SAVED/);await page.evaluate(()=>{TableStorage.write=window.originalWrite});assert.deepEqual(await state(),saved);
+  await page.evaluate(async()=>{window.goodRecord=await TableStorage.read();await TableStorage.write({...window.goodRecord,photo:null})});await tap('restore');await page.waitForFunction(()=>!busy);assert.match(await page.locator('#storage-note').textContent(),/COULD NOT RESTORE/);assert.deepEqual(await state(),saved);
+  await page.evaluate(()=>TableStorage.write(window.goodRecord));
+  // Photo replacement and undo do not corrupt the saved scene.
+  await page.locator('#photo-input').setInputFiles({name:'bad.png',mimeType:'image/png',buffer:Buffer.from('invalid')});await page.waitForFunction(()=>document.getElementById('status').textContent.includes('could not be opened'));assert.ok(await page.evaluate(()=>!!photoBlob));
+  for(const width of [320,390,844]){
+   await page.setViewportSize({width,height:width===844?390:844});
+   await page.locator('.piece[aria-label^="plate"]').first().tap();await page.waitForFunction(()=>focused);await page.waitForTimeout(100);
+   const rect=await page.locator('#inspector').boundingBox();assert.ok(rect.y>=0&&rect.y+rect.height<=(width===844?391:845));
+   const shape=await page.locator('#stage').evaluate(e=>e.clientWidth/e.clientHeight);assert.ok(Math.abs(shape-1.5)<.02);await tap('done');
+   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+  }
+  await page.setViewportSize({width:390,height:844});await tap('forget-save');await page.waitForFunction(()=>!busy);await page.reload();await ready();assert.equal((await state()).items.length,0);assert.equal(await page.evaluate(()=>photoBlob),null);
+  // Explicitly saving without a photo also restores with an honest message.
+  await tap('guests-2');await tap('save');await page.waitForFunction(()=>!busy);await page.reload();await ready();assert.equal((await state()).items.length,8);assert.match(await page.locator('#storage-note').textContent(),/did not contain a photo/);
+  assert.deepEqual(errors,[]);assert.deepEqual(external,[]);
+  console.log('PASS POC 0.25: mobile focus/toolbar/zoom, 2/4/6 templates, attached glassware, collection isolation, group drag/scale/rotation/spacing/duplicate/delete/undo/layers, individual edits, plate compression, atomic IndexedDB photo save and automatic reload restoration, reset/restore undo, failed/missing-photo storage, no network uploads, portrait/landscape layout.');
+ }finally{await browser.close()}
+})().catch(e=>{console.error(e);process.exit(1)});

@@ -6,32 +6,47 @@
   <meta name="theme-color" content="#f5f2eb">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' blob: data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
   <title>Table Studio · Style your table</title>
-  <link rel="stylesheet" href="./style.css?v=0.2">
-  <script src="./assets.js?v=0.2" defer></script>
-  <script src="./app.js?v=0.2" defer></script>
+  <link rel="stylesheet" href="./style.css?v=0.25">
+  <script src="./assets.js?v=0.25" defer></script>
+  <script src="./geometry.js?v=0.25" defer></script>
+  <script src="./storage.js?v=0.25" defer></script>
+  <script src="./app.js?v=0.25" defer></script>
 </head>
 <body>
   <main>
-    <header><div class="brand">TABLE <em>STUDIO</em></div><span class="badge">POC 0.2</span></header>
+    <header><div class="brand">TABLE <em>STUDIO</em></div><span class="badge">POC 0.25</span></header>
     <section class="intro"><p class="eyebrow">A LITTLE IMAGINATION. YOUR OWN TABLE.</p><h1>Make room for<br><em>your next gathering.</em></h1><p>Photograph your table. Try a setting. Make it yours.</p></section>
     <div class="photo-actions"><button id="choose" class="primary">＋ Choose photo</button><button id="camera">Take photo</button></div>
     <input id="photo-input" type="file" accept="image/*" hidden>
     <input id="camera-input" type="file" accept="image/*" capture="environment" hidden>
-    <p class="privacy">⌁ Your photo stays on this device. Refresh clears it.</p>
+    <p class="privacy">⌁ Your photo stays on this device. Save to restore it next time.</p>
     <section class="game-setup" aria-label="Auto Set"><div class="section-title"><h2>How many guests?</h2><span>Auto Set</span></div><div class="guest-buttons"><button id="guests-2" aria-pressed="false">2 guests</button><button id="guests-4" aria-pressed="false">4 guests</button><button id="guests-6" aria-pressed="false">6 guests</button></div><p class="fine">New guest count replaces the layout. Undo brings it back.</p></section>
     <section class="workspace" aria-label="Table editor">
+      <div class="focus-heading"><button id="done">Done</button><span>Arrange your table</span><button id="zoom">Zoom 1×</button></div>
       <div class="canvas-heading"><span id="scene-label">YOUR CANVAS</span><button id="clear-photo" disabled>Remove photo</button></div>
-      <div id="stage" tabindex="0" aria-label="Table canvas. Select an item to edit it.">
+      <div id="canvas-window"><div id="stage" tabindex="0" aria-label="Table canvas. Select an item to edit it.">
         <img id="table-photo" alt="Your selected dining table" hidden draggable="false">
         <div id="empty"><span class="empty-icon">▧</span><h2>A table full of possibilities.</h2><p>Choose a photo to begin,<br>or try arranging items here.</p></div>
         <div id="items"></div>
       </div>
-      <p class="hint">Drag to move · Pinch to resize · Twist to rotate</p>
+      </div><p class="hint">Tap to edit full screen · Drag, pinch or twist a place setting</p>
+      <section id="inspector" aria-label="Selected item controls">
+      <div class="selection-heading"><strong id="selection-label">Tap a plate</strong><span id="count">0 pieces</span></div>
+      <div class="mode-switch" aria-label="Selection mode"><button id="mode-item" aria-pressed="false">Item</button><button id="mode-setting" aria-pressed="true">Place Setting</button><button id="edit-save">Save</button></div>
+      <div class="tool-tabs" aria-label="Adjustment"><button id="tool-size" aria-pressed="true">Size</button><button id="tool-rotation" aria-pressed="false">Rotate</button><button id="tool-tilt" aria-pressed="false">Plate angle</button><button id="tool-spacing" aria-pressed="false">Spacing</button></div>
+      <div class="sliders">
+        <label id="control-size"><span id="size-caption">Group size</span><input id="size" aria-label="Selection size" type="range" min="0.08" max="3" step="0.01" value="1" disabled><output id="size-value">100%</output></label>
+        <label id="control-rotation" hidden>Rotate <input id="rotation" aria-label="Selection rotation" type="range" min="-180" max="180" step="1" value="0" disabled><output id="rotation-value">0°</output></label>
+        <label id="control-tilt" hidden>Flatness <input id="tilt" aria-label="Plate compression" type="range" min="0.55" max="1" step="0.01" value="1" disabled><output id="tilt-value">100%</output></label>
+        <div id="control-spacing" hidden><button id="spacing-compact">Compact</button><button id="spacing-standard">Standard</button><button id="spacing-formal">Formal</button></div>
+      </div>
+      <div class="edit-actions"><button id="duplicate" disabled>Duplicate</button><button id="delete" disabled>Delete</button><button id="forward" disabled>To front</button><button id="undo" disabled>Undo</button></div>
+    </section><p id="edit-status" role="status"></p>
     </section>
     <section class="collection-panel" aria-label="Pick collections"><div class="section-title"><h2>Make it your style</h2><span>Mix & match</span></div><fieldset><legend>Change Plates</legend><div id="choices-plates" class="collection-options"></div></fieldset><fieldset><legend>Change Cutlery</legend><div id="choices-cutlery" class="collection-options"></div></fieldset><fieldset><legend>Change Glassware</legend><div id="choices-glassware" class="collection-options"></div></fieldset></section>
     <section class="catalog" aria-label="Add tableware"><div class="section-title"><h2>Add a little more</h2><span>Tap to add</span></div><div id="products"></div><p class="fine">Illustrative pieces · 2D preview, not actual size or AR</p></section>
-    <section id="inspector" aria-label="Selected item controls"><div class="selection-heading"><strong id="selection-label">Select a piece to adjust</strong><span id="count">0 pieces</span></div><div class="sliders"><label>Size <input id="size" type="range" min="0.1" max="3" step="0.01" value="1" disabled><output id="size-value">100%</output></label><label>Rotate <input id="rotation" type="range" min="-180" max="180" step="1" value="0" disabled><output id="rotation-value">0°</output></label></div><div class="edit-actions"><button id="duplicate" disabled>Duplicate</button><button id="delete" disabled>Delete</button><button id="forward" disabled>Bring forward</button><button id="undo" disabled>Undo</button></div></section>
-    <div class="table-actions"><button id="save">Save arrangement</button><button id="restore">Restore saved</button><button id="reset">Reset table</button></div><p class="fine">Saved in this browser only · Photos are never saved or uploaded</p>
+    <div class="table-actions"><button id="save">Save arrangement</button><button id="restore">Restore saved</button><button id="reset">Reset table</button><button id="forget-save">Delete saved</button></div><p class="fine">Photo + arrangement saved only in this browser · Never uploaded</p>
+    <p id="storage-note" class="storage-note" role="status">Checking local photo storage…</p>
     <p id="status" role="status" aria-live="polite"></p>
   </main>
 </body>
