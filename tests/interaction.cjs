@@ -12,10 +12,10 @@ try { playwright = require('playwright'); } catch { playwright = require(process
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
     for(const type of ['plate','glass','fork','knife'])await page.getByRole('button',{name:`Add ${type}`,exact:true}).tap();
     assert.equal(await page.locator('.piece').count(),4);
-    await page.locator('.piece').first().tap();
-    await page.locator('#size').fill('1.5');await page.locator('#size').dispatchEvent('change');
-    await page.locator('#rotation').fill('45');await page.locator('#rotation').dispatchEvent('change');
-    assert.match(await page.locator('.selected').getAttribute('style'),/rotate\(45deg\) scale\(1.5\)/);
+    await page.locator('.piece').first().tap({position:{x:14,y:50}});
+    await page.locator('#size').press('ArrowRight');
+    await page.locator('#rotation').press('ArrowRight');
+    assert.match(await page.locator('.selected').getAttribute('style'),/rotate\(1deg\) scale\(1.01\)/);
     await page.getByRole('button',{name:'Duplicate',exact:true}).tap();assert.equal(await page.locator('.piece').count(),5);
     await page.getByRole('button',{name:'Delete',exact:true}).tap();assert.equal(await page.locator('.piece').count(),4);
     await page.getByRole('button',{name:'Undo',exact:true}).tap();assert.equal(await page.locator('.piece').count(),5);
@@ -33,7 +33,7 @@ try { playwright = require('playwright'); } catch { playwright = require(process
       stage.setPointerCapture=realCapture;
       return {dragged,transformed};
     });
-    assert.equal(result.dragged,true);assert.ok(!result.transformed.includes('rotate(45deg)'));
+    assert.equal(result.dragged,true);assert.ok(!result.transformed.includes('rotate(1deg)'));
     // Local synthetic PNG photo, repeated selection and invalid-format handling.
     const png=await page.evaluate(()=>{const c=document.createElement('canvas');c.width=600;c.height=400;const x=c.getContext('2d');x.fillStyle='#bda98c';x.fillRect(0,0,600,400);return c.toDataURL().split(',')[1];});
     const file={name:'test-table.png',mimeType:'image/png',buffer:Buffer.from(png,'base64')};
