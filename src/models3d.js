@@ -12,7 +12,7 @@ export function makeGeometries(){
  const knife=extrude([[-.005,.108],[.006,.108],[.009,.090],[.006,-.005],[.014,-.010],[.020,-.080],[.015,-.110],[-.001,-.110],[-.008,-.075],[-.011,-.020],[-.005,.010]],.0035);
  // Closed bowl wall with lip, solid stem and foot. Actual height .185, foot .070 wide.
  const glass=lathe([[0,.001],[.030,.001],[.035,.003],[.035,.006],[.028,.009],[.004,.012],[.0025,.070],[.008,.078],[.023,.089],[.031,.111],[.033,.143],[.027,.185],[.0255,.185],[.031,.142],[.029,.113],[.021,.094],[.006,.083],[0,.081]],40);
- const out={plate,fork,knife,glass};for(const g of Object.values(out)){g.computeBoundingBox();g.computeBoundingSphere();}return out;
+ const out={plate,fork,knife,glass};for(const g of Object.values(out)){g.normalizeNormals();g.computeBoundingBox();g.computeBoundingSphere();}return out;
 }
 export function makeMaterials(){
  const ceramic=color=>new T.MeshPhysicalMaterial({color,roughness:.23,metalness:0,clearcoat:.65,clearcoatRoughness:.19});

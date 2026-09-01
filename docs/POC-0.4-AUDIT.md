@@ -26,12 +26,13 @@ Severity: P1 blocks a core function/data integrity; P2 materially degrades inter
 | A06 | P2 risk | Guest selector has 13px computed font size, a Safari form-focus zoom risk. Actual zoom on an iPhone was not reproduced here. | Use 16px text and 44px select height; `select-no-ios-zoom` verifies the CSS condition, not physical Safari behavior. |
 | A07 | P2 | Source/controlled frame diagnostics show frames ≥250ms are discarded, producing missing FPS and preventing reliable slow-device detection. User pauses are also mixed with active frame timing. | Retain long scheduled frames, distinguish idle scheduling, bound samples, report p95/max/slow frames. Reduce quality then fall back after sustained <12.5 FPS windows. `frame-health.cjs`, `slow-frames-counted`, `slow-device-fallback` use 300/320ms frames. |
 | A08 | P2 | Small secondary text #737970 on #f5f2eb measures 3.998:1, below 4.5:1 for ordinary text. | Darken the existing muted color to #62695f; `small-text-contrast` calculates the browser-computed ratio. No typography/layout redesign. |
+| A09 | P3 | Generated center-ring normals have magnitude 0.066 on the plate and 0.0063 on the glass. Interpolation therefore weights lighting unevenly despite valid outward geometry. | Normalize shared geometry normals once on creation. `tests/models.cjs` checks every normal, finite vertices, outward volume, actual thickness, glass height and material properties. |
 
 The contrast criterion follows [W3C WCAG 2.2 SC 1.4.3](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html). This is a targeted accessibility check, not a claim of full WCAG conformance.
 
 ## Complete test matrix
 
-L = `tests/logic.cjs`; I = `tests/interaction.cjs`; U = `tests/live-qa.cjs`; T = `tests/three.cjs`; A = `tests/audit.cjs`; H = `tests/frame-health.cjs`. Automated coverage below is subject to the final gate results recorded at the end of this document.
+L = `tests/logic.cjs`; I = `tests/interaction.cjs`; U = `tests/live-qa.cjs`; T = `tests/three.cjs`; A = `tests/audit.cjs`; H = `tests/frame-health.cjs`; M = `tests/models.cjs`. Automated coverage below is subject to the final gate results recorded at the end of this document.
 
 | Area / case | Method and acceptance | Coverage / limitation |
 |---|---|---|
@@ -60,7 +61,7 @@ L = `tests/logic.cjs`; I = `tests/interaction.cjs`; U = `tests/live-qa.cjs`; T =
 | Explicit save / restore | Atomic photo bytes plus complete arrangement, calibration, collections | I/U/T/A; live cloud save/reload |
 | Reload during editing | Last explicit save returns; later unsaved edits are not autosaved | A |
 | WebGL initialization | Actual WebGL2 required, not a fallback counted as a pass | T/A |
-| Four object models | All mesh types; nonzero triangles and shared geometry | T/A + asset source review |
+| Four object models | All mesh types; nonzero triangles, unit normals, outward winding, thickness and shared geometry | T/A/M + asset source review |
 | Six-guest renderer | 24 objects / 6 roots, finite camera, stable resources | T/A/L |
 | Narrow table | Calibrated layout ground containment and all guest counts | L/I/U/T |
 | Wide table | Calibrated layout ground containment and all guest counts | L/I/U/T |
