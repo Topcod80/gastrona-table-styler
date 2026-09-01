@@ -12,7 +12,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),{webkit,devices
  await page.getByRole('button',{name:'Load 3D preview'}).tap();await page.locator('#preview-controls').waitFor({state:'visible'});
  check('real WebGL preview initializes',await page.locator('#model').evaluate(c=>!!c.getContext('webgl2')));
  await page.locator('#rotation').press('End');check('preview rotation works',await page.locator('#model').getAttribute('data-rotation')==='180');await page.getByRole('button',{name:'Reset view'}).tap();check('preview reset works',await page.locator('#model').getAttribute('data-rotation')==='0');
- await page.locator('#preview-stage').screenshot({path:out+'/plate-preview.png'});
+ // WebKit's screenshot helper injects a stylesheet; keep strict-CSP functional checks free of that automation side effect.
  for(const v of [{width:320,height:568},{width:390,height:844},{width:844,height:390}]){await page.setViewportSize(v);check('no horizontal overflow '+v.width,await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.locator('#preview-reset').scrollIntoViewIfNeeded();const r=await page.locator('#preview-reset').boundingBox();check('reachable 48px control '+v.width,r.height>=48&&r.y>=0&&r.y+r.height<=v.height+1)}
  check('no persistence added',await page.evaluate(()=>localStorage.length===0&&sessionStorage.length===0&&window.auditStorageOpens===0));
  check('normal console clean',errors.length===0&&warnings.length===0);
@@ -25,7 +25,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),{webkit,devices
  check('native handoff is labelled honestly',(await np.locator('#native-note').textContent()).includes('native camera'));
  await np.locator('#quicklook').evaluate(a=>a.addEventListener('click',e=>e.preventDefault(),{once:true}));await np.locator('#quicklook').tap();check('handoff never claims tracking success',(await np.locator('#capability').textContent()).includes('cannot confirm tracking'));
  // Preventing default avoids opening an OS viewer on the runner; only page behavior is asserted.
- await np.locator('#quicklook').screenshot({path:out+'/native-launch-control.png'});await native.close();
+ await native.close();
  const broken=await browser.newContext(mobile);await broken.addInitScript(()=>{const get=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...args){if(type.includes('webgl'))return null;return get.call(this,type,...args)}});const bp=await broken.newPage();await bp.goto(base);await bp.locator('#preview-start').tap();await bp.waitForFunction(()=>document.getElementById('preview-status').textContent.includes('unavailable'));check('WebGL unavailable does not fake AR',await bp.locator('#poster').isVisible()&&await bp.locator('#preview-start').isEnabled());await broken.close();
  const failed=await browser.newContext(mobile);await failed.route('**/preview.js',r=>r.abort());const fp=await failed.newPage();await fp.goto(base);await fp.locator('#preview-start').tap();await fp.waitForFunction(()=>document.getElementById('preview-status').textContent.includes('unavailable'));check('bundle failure remains readable/retryable',await fp.locator('#preview-start').isEnabled());await failed.close();
  fs.writeFileSync(out+'/qa.json',JSON.stringify({base,commit:process.env.GITHUB_SHA,checks,errors,warnings,requests,physicalQuickLook:'NOT TESTED: requires an AR-capable physical iPhone',worldTracking:'Native Apple viewer only; no browser tracking implemented'},null,2));

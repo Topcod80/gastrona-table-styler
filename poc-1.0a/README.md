@@ -60,7 +60,7 @@ node poc-1.0a/tests.cjs
 
 Build output is `poc-1.0a/dist/`; generated binaries are built from source in CI. `build.json` records geometry dimensions, source/asset hashes and the commit. OpenUSD opens the actual archive and verifies topology, bounds, material binding, metre units, horizontal anchoring and 64-byte ZIP alignment.
 
-Mobile WebKit tests exercise the real 3D preview, rotate/reset, small portrait/landscape, native link markup under simulated capability detection, unavailable graphics, context loss, bundle failure, storage absence and network requests. Simulating capability does **not** emulate Apple's native viewer or certify world tracking. Post-deployment tests also verify USDZ delivery/MIME. Raw results and preview screenshots are in the workflow artifacts.
+Mobile WebKit tests exercise the real 3D preview, rotate/reset, small portrait/landscape, native link markup under simulated capability detection, unavailable graphics, context loss, bundle failure, storage absence and network requests. Simulating capability does **not** emulate Apple's native viewer or certify world tracking. Post-deployment tests also verify USDZ delivery/MIME. Raw results are retained in workflow artifacts. Playwright’s WebKit screenshot helper injects an inline stylesheet, so screenshot calls are excluded from the strict-CSP clean-console regression instead of relaxing the production policy.
 
 ## Deployment isolation
 
