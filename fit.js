@@ -3,8 +3,9 @@
 const TableFit=(()=>{
  const P=typeof module!=='undefined'?require('./perspective.js'):TablePerspective;
  const sizes={plate:[.24,1],glass:[.07,1],fork:[.05,140/32],knife:[.05,140/32]};
+ const C=typeof module!=='undefined'?require('./camera.js'):TableCamera;
  const identity=[{x:0,y:1},{x:1,y:1},{x:1,y:0},{x:0,y:0}];
- function context(q,imageRatio,three=false){return {three,h:P.matrix(q||identity),imageRatio,ratio:q?P.ratio(q,imageRatio):imageRatio,surface:!!q};}
+ function context(q,imageRatio,three=false){return {three,h:P.matrix(q||identity),imageRatio,ratio:three?C.solve(q,imageRatio).ratio:q?P.ratio(q,imageRatio):imageRatio,surface:!!q};}
  function pose(i,ctx){return ctx.surface?P.pose(ctx.h,i,ctx.ratio,ctx.imageRatio):{x:i.x,y:i.y,scale:1,rotation:i.rotation};}
  function footprint(i,ctx){
   if(ctx.three){const [width,aspect]=sizes[i.type],a=width*i.scale*.54,b=a*aspect,t=i.rotation*Math.PI/180,c=Math.cos(t),s=Math.sin(t);return [[-1,-1],[1,-1],[1,1],[-1,1]].map(([x,y])=>P.project(ctx.h,{x:i.x+c*x*a-s*y*b,y:i.y+(s*x*a+c*y*b)*ctx.ratio}));}

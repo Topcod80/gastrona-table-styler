@@ -83,3 +83,7 @@ for(const quad of Object.values(fixtures)){
 }
 const cam=C.solve(q,1.5);assert.ok(C.project(cam,.5,.2/cam.ratio).w>C.project(cam,.5,.8/cam.ratio).w,'Far objects have larger perspective denominator');
 console.log('PASS 3D: exact quad anchors, elevated glass projection, virtual-camera depth, complete 2/4/6 ground footprints fit.');
+// Camera-space axes set physical proportions; photographed edge ratio is not metric.
+{const q=[{x:.09,y:.90},{x:.92,y:.84},{x:.73,y:.20},{x:.31,y:.23}],c=C.solve(q,1.5),h=P.matrix(q),f=c.focal;
+ const length=(x,y,w)=>Math.hypot((x-.5*w)/f,(y-.5*w)/(1.5*f),w);
+ close(c.ratio,length(h[0],h[3],h[6])/length(h[1],h[4],h[7]));assert.ok(Math.abs(c.ratio-P.ratio(q,1.5))>.1);}

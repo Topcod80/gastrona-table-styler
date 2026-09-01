@@ -13,7 +13,7 @@ function fallback3D(reason){view3D='fallback';renderer3D?.dispose();renderer3D=n
 function load3D(){
  if(loading3D)return loading3D;
  view3D='loading';$('render-status').textContent='Loading 3D…';
- loading3D=new Promise((resolve,reject)=>{if(window.Table3D){resolve();return;}const script=document.createElement('script');script.src='./dist/table3d.js?v=0.40';script.onload=resolve;script.onerror=()=>reject(Error('load'));document.head.append(script);});
+ loading3D=new Promise((resolve,reject)=>{if(window.Table3D){resolve();return;}const script=document.createElement('script');script.src='./dist/table3d.js?v=0.40.1';script.onload=resolve;script.onerror=()=>reject(Error('load'));document.head.append(script);});
  update3DControls();
  loading3D.then(()=>{
   loading3D=null;if(!requested3D)return;

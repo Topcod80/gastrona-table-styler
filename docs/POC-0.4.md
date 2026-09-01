@@ -26,7 +26,7 @@ photo. No user image is copied into a GPU texture or sent across the network.
 `camera.js` extends the existing tabletop homography to a 3D projective camera.
 All points at height zero map exactly through the calibrated homography. A centered
 principal point and vanishing-direction focal estimate (moderate-FOV fallback) give
-an approximate upright direction and rigid camera pose. A residual projection
+an approximate upright direction and rigid camera pose. Camera-space axis lengths estimate the plane width/depth ratio, avoiding the old screen-edge ratio stretching circular meshes. A residual projection
 correction retains the four exact tabletop anchors. Elevated vertices participate
 in perspective division; no per-object sprite/Jacobian scaling drives the 3D meshes.
 

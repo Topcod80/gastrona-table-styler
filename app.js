@@ -8,7 +8,7 @@ const SAVE_KEY = 'table-studio.arrangement.v2'; // Read-only compatibility with 
 let groups=[],groupSerial=0,selectionMode='setting',spacing='standard',sceneRatio=4/3,photoBlob=null,focused=false,viewZoom=1,pan=null,revision=0;
 let drawingContext=null;
 let calibration=null,calibrating=false,calibrationDraft=null,cornerDrag=null;
-const planeRatio=()=>calibration?TablePerspective.ratio(calibration,sceneRatio):sceneRatio;
+const planeRatio=()=>calibration?(is3D()?TableCamera.solve(calibration,sceneRatio).ratio:TablePerspective.ratio(calibration,sceneRatio)):sceneRatio;
 const activeCalibration=()=>calibrating&&TablePerspective.valid(calibrationDraft)?calibrationDraft:calibration;
 let lastSavedScene=null,lastSavedPhoto=null,lastSavedAt=null,saveError=false;
 let panel='arrange',surfaceView=true,calibrationWasFocused=false;
