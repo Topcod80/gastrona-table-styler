@@ -39,7 +39,10 @@ const TablePerspective=(()=>{
   const vx=-Math.sin(t),vy=Math.cos(t);
   const rotation=Math.atan2(c*vx+d*vy,a*vx+b*vy)*180/Math.PI-90;
   const maximum=Math.sqrt(Math.max(1e-12,(trace+Math.sqrt(Math.max(0,trace*trace-4*det*det)))/2));
-  const surfaceAngle=.5*Math.atan2(2*(a*c+b*d),a*a+b*b-c*c-d*d)*180/Math.PI;
+  // The quad alone cannot recover physical aspect ratio or camera intrinsics.
+  // Keep the bounded grounding cue aligned with the local left-to-right table
+  // direction; a singular-vector axis can flip upright on a long narrow table.
+  const surfaceAngle=Math.atan2(c,a)*180/Math.PI;
   return {...v,scale,rotation,flatness:Math.max(.66,Math.min(1,scale/maximum)),surfaceAngle};
  }
  return {ratio,valid,matrix,project,inverse,pose};

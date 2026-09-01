@@ -66,3 +66,9 @@ for(const r of [.6,1,1.5,2.5])for(const n of [2,4,6]){
 }
 const ground=P.pose(ctx.h,{x:.5,y:.5,rotation:0},ctx.ratio,1.5);assert.ok(ground.flatness>=.66&&ground.flatness<1);assert.ok(Number.isFinite(ground.surfaceAngle));
 console.log('PASS QA: in-bounds oversized overlap repaired; proportional packing; seat-edge placement; bounded surface flattening.');
+
+// Grounding axis follows the table edge even where the longest projected axis is depth.
+{ const P=require("../perspective.js"),q=[{x:.06,y:.93},{x:.94,y:.87},{x:.65,y:.14},{x:.41,y:.17}],h=P.matrix(q),p={x:.5,y:.7};
+ const pose=P.pose(h,p,P.ratio(q,1.5),1.5),next=P.project(h,{x:p.x+.001,y:p.y}),at=P.project(h,p);
+ const expected=Math.atan2((next.y-at.y)/1.5,next.x-at.x)*180/Math.PI;
+ assert.ok(Math.abs(pose.surfaceAngle-expected)<1e-6,"Plate axis follows local table width, not its upright depth axis"); }
