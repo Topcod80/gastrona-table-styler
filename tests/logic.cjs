@@ -19,3 +19,16 @@ const corner=G.transform(six[0].items,G.pivot(six[0].items),ratio,{dx:-10,dy:-10
 assert.ok(Math.abs(dist(corner.items[0],corner.items[3])-dist(six[0].items[0],six[0].items[3]))<1e-10);
 for(const ratio of [.65,1,1.5,2.5])for(const n of [2,4,6])for(const seat of G.layout(n,ratio))for(const i of seat.items)assert.ok(i.x>0&&i.x<1&&i.y>0&&i.y<1);
 console.log('PASS: all seating templates, 6-guest end seats, guest-relative fork/knife/glass positions, glass proximity, affine group transform distances, spacing presets, whole-group boundary correction, portrait/wide layouts.');
+const P=require('../perspective.js');
+const q=[{x:.05,y:.93},{x:.96,y:.83},{x:.66,y:.16},{x:.4,y:.2}],h=P.matrix(q),inv=P.inverse(h);
+const source=[{x:0,y:1},{x:1,y:1},{x:1,y:0},{x:0,y:0}];
+const close=(a,b)=>assert.ok(Math.abs(a-b)<1e-9);
+source.forEach((p,i)=>{const v=P.project(h,p);close(v.x,q[i].x);close(v.y,q[i].y)});
+for(let x=0;x<=1;x+=.1)for(let y=0;y<=1;y+=.1){const p=P.project(inv,P.project(h,{x,y}));close(p.x,x);close(p.y,y)}
+const widthAt=y=>{const a=P.project(h,{x:.4,y}),b=P.project(h,{x:.6,y});return Math.hypot(a.x-b.x,a.y-b.y)};
+assert.ok(widthAt(.2)<widthAt(.8)*.7);
+assert.equal(P.valid([q[0],q[2],q[1],q[3]]),false);assert.equal(P.valid(Array(4).fill(q[0])),false);
+// CSS matrix3d and mathematical mapping must agree at points across the plane.
+const css=P.css(h,600,400).slice(9,-1).split(',').map(Number);
+for(const p of [...source,{x:.34,y:.22},{x:.88,y:.5}]){const x=p.x*600,y=p.y*400,w=css[3]*x+css[7]*y+css[15],v=P.project(h,p);close((css[0]*x+css[4]*y+css[12])/w,v.x*600);close((css[1]*x+css[5]*y+css[13])/w,v.y*400)}
+console.log('PASS: homography corner fit, inverse round trips, strong depth scaling, invalid quad rejection, CSS projection equivalence.');

@@ -54,7 +54,7 @@ jobs:
       - name: Stage application files only
         run: |
           mkdir _site
-          cp index.html style.css assets.js geometry.js storage.js app.js _site/
+          cp index.html style.css assets.js geometry.js perspective.js storage.js app.js _site/
           touch _site/.nojekyll
       - uses: actions/configure-pages@v5
         with:
@@ -69,7 +69,7 @@ jobs:
         env:
           PAGE_URL: ${{ steps.deployment.outputs.page_url }}
         run: |
-          for file in index.html style.css assets.js geometry.js storage.js app.js; do
+          for file in index.html style.css assets.js geometry.js perspective.js storage.js app.js; do
             curl --fail --retry 8 --retry-delay 5 --retry-all-errors "${PAGE_URL}${file}?commit=${GITHUB_SHA}" -o "/tmp/deployed-${file}"
             cmp "${file}" "/tmp/deployed-${file}"
           done

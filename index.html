@@ -6,20 +6,22 @@
   <meta name="theme-color" content="#f5f2eb">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' blob: data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
   <title>Table Studio · Style your table</title>
-  <link rel="stylesheet" href="./style.css?v=0.25">
-  <script src="./assets.js?v=0.25" defer></script>
-  <script src="./geometry.js?v=0.25" defer></script>
-  <script src="./storage.js?v=0.25" defer></script>
-  <script src="./app.js?v=0.25" defer></script>
+  <link rel="stylesheet" href="./style.css?v=0.3">
+  <script src="./assets.js?v=0.3" defer></script>
+  <script src="./geometry.js?v=0.3" defer></script>
+  <script src="./perspective.js?v=0.3" defer></script>
+  <script src="./storage.js?v=0.3" defer></script>
+  <script src="./app.js?v=0.3" defer></script>
 </head>
 <body>
   <main>
-    <header><div class="brand">TABLE <em>STUDIO</em></div><span class="badge">POC 0.25</span></header>
+    <header><div class="brand">TABLE <em>STUDIO</em></div><span class="badge">POC 0.3</span></header>
     <section class="intro"><p class="eyebrow">A LITTLE IMAGINATION. YOUR OWN TABLE.</p><h1>Make room for<br><em>your next gathering.</em></h1><p>Photograph your table. Try a setting. Make it yours.</p></section>
     <div class="photo-actions"><button id="choose" class="primary">＋ Choose photo</button><button id="camera">Take photo</button></div>
     <input id="photo-input" type="file" accept="image/*" hidden>
     <input id="camera-input" type="file" accept="image/*" capture="environment" hidden>
     <p class="privacy">⌁ Your photo stays on this device. Save to restore it next time.</p>
+    <div class="calibration-entry"><button id="calibrate" disabled>Calibrate table</button><span class="fine">Optional · Mark four tabletop corners</span></div>
     <section class="game-setup" aria-label="Auto Set"><div class="section-title"><h2>How many guests?</h2><span>Auto Set</span></div><div class="guest-buttons"><button id="guests-2" aria-pressed="false">2 guests</button><button id="guests-4" aria-pressed="false">4 guests</button><button id="guests-6" aria-pressed="false">6 guests</button></div><p class="fine">New guest count replaces the layout. Undo brings it back.</p></section>
     <section class="workspace" aria-label="Table editor">
       <div class="focus-heading"><button id="done">Done</button><span>Arrange your table</span><button id="zoom">Zoom 1×</button></div>
@@ -28,8 +30,19 @@
         <img id="table-photo" alt="Your selected dining table" hidden draggable="false">
         <div id="empty"><span class="empty-icon">▧</span><h2>A table full of possibilities.</h2><p>Choose a photo to begin,<br>or try arranging items here.</p></div>
         <div id="items"></div>
+        <div id="calibration-overlay" hidden>
+          <svg viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-hidden="true"><polygon id="calibration-outline"/></svg>
+          <button class="corner" data-corner="0" aria-label="Near-left corner">1</button>
+          <button class="corner" data-corner="1" aria-label="Near-right corner">2</button>
+          <button class="corner" data-corner="2" aria-label="Far-right corner">3</button>
+          <button class="corner" data-corner="3" aria-label="Far-left corner">4</button>
+        </div>
       </div>
       </div><p class="hint">Tap to edit full screen · Drag, pinch or twist a place setting</p>
+      <section id="calibration-tools" hidden aria-label="Table calibration">
+        <p id="calibration-help" role="status"></p><p class="fine">1 Near-left · 2 Near-right · 3 Far-right · 4 Far-left</p>
+        <div><button id="calibration-done" class="primary">Done</button><button id="calibration-reset">Reset calibration</button><button id="calibration-cancel">Cancel</button></div>
+      </section>
       <section id="inspector" aria-label="Selected item controls">
       <div class="selection-heading"><strong id="selection-label">Tap a plate</strong><span id="count">0 pieces</span></div>
       <div class="mode-switch" aria-label="Selection mode"><button id="mode-item" aria-pressed="false">Item</button><button id="mode-setting" aria-pressed="true">Place Setting</button><button id="edit-save">Save</button></div>

@@ -25,5 +25,13 @@ const TableAssets = (() => {
     cutlery: Object.fromEntries([['classic','#c7ceca','#808e88'],['gold','#d2b879','#947638'],['ink','#46524d','#24352c']].map(([id,fill,stroke])=>[id,Object.fromEntries(['fork','knife'].map(type=>[type,baseArt[type].replaceAll('#c7ceca',fill).replaceAll('#808e88',stroke)]))])),
     glassware: Object.fromEntries([['classic','#eaf3e8','#83958b'],['amber','#dfa959','#987344'],['rose','#df9dae','#a97382']].map(([id,fill,stroke])=>[id,{glass:baseArt.glass.replaceAll('#eaf3e8',fill).replaceAll('#83958b',stroke)}]))
   };
-  return {categories,collections,render(type,id){return assets[categories[type]][id]?.[type] || baseArt[type];}};
+  return {categories,collections,render(type,id,surface=false){
+    // A plan-view glass footprint belongs on the table plane; a front-view
+    // stem-glass illustration would look as though it were lying on the table.
+    if(surface&&type==='glass'){
+      const color=collections.glassware.find(c=>c.id===id)?.color||'#dae8e2';
+      return `<svg viewBox="0 0 70 70" aria-hidden="true"><circle cx="35" cy="35" r="29" fill="${color}" fill-opacity=".4" stroke="#7c9087" stroke-width="2"/><circle cx="35" cy="35" r="25" fill="none" stroke="#fff" stroke-opacity=".9" stroke-width="2"/><circle cx="35" cy="35" r="14" fill="${color}" fill-opacity=".25" stroke="#82958a" stroke-opacity=".45"/><path d="M15 34a20 20 0 0 1 16-19" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/></svg>`;
+    }
+    return assets[categories[type]][id]?.[type] || baseArt[type];
+  }};
 })();

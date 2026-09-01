@@ -60,7 +60,7 @@ let pw;try{pw=require('playwright')}catch{pw=require(process.env.CODEX_PRIMARY_R
   // Save the photo and scene atomically, then auto-restore both on reload.
   const saved=await state();assert.equal(await page.evaluate(()=>{try{validateScene(scene());return 'valid'}catch(e){return e.message}}),'valid');await tap('save');await page.waitForFunction(()=>!busy);if(!(await page.locator('#storage-note').textContent()).startsWith('Photo +')){throw Error(await page.evaluate(async()=>{try{await TableStorage.write({scene:scene(),photo:photoBlob,hadPhoto:!!photoBlob});return 'Retry wrote; UI: '+document.getElementById('storage-note').textContent}catch(e){return e.name+': '+e.message}}));}
   const record=await page.evaluate(async()=>{const r=await TableStorage.read();return {bytes:r.photo.size,type:r.photo.type,hadPhoto:r.hadPhoto,version:r.scene.version}});
-  assert.equal(record.bytes,file.buffer.length);assert.equal(record.hadPhoto,true);assert.equal(record.version,25);
+  assert.equal(record.bytes,file.buffer.length);assert.equal(record.hadPhoto,true);assert.equal(record.version,30);
   await page.reload();await ready();assert.deepEqual(await state(),saved);assert.match(await page.locator('#table-photo').getAttribute('src'),/^blob:/);assert.equal(await page.evaluate(()=>photoBlob.size),file.buffer.length);
   await tap('reset');assert.equal((await state()).items.length,0);assert.ok(await page.evaluate(()=>!!photoBlob));await tap('undo');assert.deepEqual(await state(),saved);
   await tap('guests-2');await tap('restore');await page.waitForFunction(()=>!busy&&items.length===24);assert.deepEqual(await state(),saved);await tap('undo');assert.equal((await state()).items.length,8);await tap('restore');await page.waitForFunction(()=>!busy&&items.length===24);
@@ -80,7 +80,49 @@ let pw;try{pw=require('playwright')}catch{pw=require(process.env.CODEX_PRIMARY_R
   await page.setViewportSize({width:390,height:844});await tap('forget-save');await page.waitForFunction(()=>!busy);await page.reload();await ready();assert.equal((await state()).items.length,0);assert.equal(await page.evaluate(()=>photoBlob),null);
   // Explicitly saving without a photo also restores with an honest message.
   await tap('guests-2');await tap('save');await page.waitForFunction(()=>!busy);await page.reload();await ready();assert.equal((await state()).items.length,8);assert.match(await page.locator('#storage-note').textContent(),/did not contain a photo/);
+  // POC 0.3 calibration using draggable corner events on a mobile viewport.
+  await page.locator('#photo-input').setInputFiles(file);await page.waitForFunction(()=>!!photoBlob);
+  await tap('calibrate');await page.waitForFunction(()=>calibrating);await page.waitForTimeout(100);
+  const q=[{x:.05,y:.93},{x:.96,y:.83},{x:.66,y:.16},{x:.4,y:.2}];
+  for(let i=0;i<4;i++){
+   const handle=page.locator('.corner').nth(i),box=await handle.boundingBox();assert.ok(box.width>=44&&box.height>=44);assert.ok(box.x>=0&&box.x+box.width<=391);
+   await handle.evaluate((el,{i,p})=>{const r=stage.getBoundingClientRect(),saved=el.setPointerCapture;el.setPointerCapture=()=>{};
+    const emit=type=>el.dispatchEvent(new PointerEvent(type,{bubbles:true,cancelable:true,pointerType:'touch',pointerId:100+i,clientX:r.left+p.x*r.width,clientY:r.top+p.y*r.height}));
+    emit('pointerdown');emit('pointermove');emit('pointerup');el.setPointerCapture=saved;
+   },{i,p:q[i]});
+  }
+  await page.screenshot({path:'test-results/calibration-mobile.png'});
+  await tap('calibration-done');assert.equal(await page.evaluate(()=>calibrating),false);
+  (await state()).calibration.forEach((p,i)=>{near(p.x,q[i].x);near(p.y,q[i].y)});
+  await tap('done');await tap('guests-6');assert.equal((await state()).items.length,24);
+  // Browser-rendered plates shrink with depth, and the actual hit regions track them.
+  const rects=await page.locator('.piece[aria-label^="plate"]').evaluateAll(els=>els.map(el=>{const r=el.getBoundingClientRect();return {width:r.width,height:r.height}}));
+  assert.ok(rects[0].width<rects[2].width*.8);assert.ok(rects[0].height<rects[2].height*.8);
+  await page.locator('.piece[aria-label^="plate"]').nth(2).tap();await page.waitForFunction(()=>focused);await page.waitForTimeout(100);
+  assert.equal(await page.locator('.piece.selected').count(),4);
+  const mappedGesture=await page.evaluate(()=>{
+   const before=structuredClone(members()),r=stage.getBoundingClientRect(),target=document.querySelector('.piece.selected'),h=TablePerspective.matrix(calibration),old=stage.setPointerCapture;stage.setPointerCapture=()=>{};
+   const emit=(type,id,p,node=stage)=>{const v=TablePerspective.project(h,p);node.dispatchEvent(new PointerEvent(type,{bubbles:true,cancelable:true,pointerId:id,pointerType:'touch',clientX:r.left+v.x*r.width,clientY:r.top+v.y*r.height}));};
+   const p=before[0];emit('pointerdown',1,p,target);emit('pointermove',1,{x:p.x+.03,y:p.y-.04});emit('pointerup',1,{x:p.x+.03,y:p.y-.04});
+   const dragged=structuredClone(members());
+   emit('pointerdown',2,{x:p.x,y:p.y},target);emit('pointerdown',3,{x:p.x+.08,y:p.y});emit('pointermove',3,{x:p.x+.09,y:p.y+.04});emit('pointerup',3,p);emit('pointerup',2,p);stage.setPointerCapture=old;
+   return {before,dragged,after:structuredClone(members()),ratio:planeRatio()};
+  });
+  mappedGesture.dragged.forEach((p,i)=>{near(p.x,mappedGesture.before[i].x+.03);near(p.y,mappedGesture.before[i].y-.04)});
+  const f=mappedGesture.after[0].scale/mappedGesture.dragged[0].scale;
+  distances(mappedGesture.after,1.5).forEach((d,i)=>near(d,distances(mappedGesture.dragged,1.5)[i]*f));
+  await tap('tool-size');before=await state();await page.locator('#size').press('ArrowRight');after=await state();assert.notDeepEqual(before.items,after.items);
+  await tap('duplicate');assert.equal((await state()).items.length,28);await tap('delete');await tap('undo');await tap('undo');assert.equal((await state()).items.length,24);
+  await tap('mode-item');before=await state();await page.locator('#size').press('ArrowRight');after=await state();assert.equal(after.items.filter((p,i)=>JSON.stringify(p)!==JSON.stringify(before.items[i])).length,1);await tap('mode-setting');
+  await page.screenshot({path:'test-results/perspective-six-guests.png'});
+  await tap('done');const calibrated=await state();await tap('save');await page.waitForFunction(()=>!busy);await page.reload();await ready();assert.deepEqual(await state(),calibrated);assert.equal(await page.evaluate(()=>photoBlob.size),file.buffer.length);
+  // Invalid quadrilateral cannot be committed; Cancel retains the saved calibration.
+  await tap('calibrate');await page.evaluate(()=>{calibrationDraft=[calibration[0],calibration[2],calibration[1],calibration[3]];paint()});assert.equal(await page.locator('#calibration-done').isDisabled(),true);await tap('calibration-cancel');assert.deepEqual(await state(),calibrated);await tap('done');
+  await tap('calibrate');await tap('calibration-reset');assert.equal((await state()).calibration,null);await tap('undo');assert.deepEqual(await state(),calibrated);await tap('done');
+  // Replacing a photo clears calibration; undo restores both the original photo and plane.
+  await page.locator('#photo-input').setInputFiles(file);await page.waitForFunction(()=>calibration===null);await tap('undo');assert.deepEqual(await state(),calibrated);
+  const legacy=await page.evaluate(()=>validateScene({...scene(),version:25,calibration:undefined}));assert.equal(legacy.calibration,null);assert.equal(legacy.version,30);
   assert.deepEqual(errors,[]);assert.deepEqual(external,[]);
-  console.log('PASS POC 0.25: mobile focus/toolbar/zoom, 2/4/6 templates, attached glassware, collection isolation, group drag/scale/rotation/spacing/duplicate/delete/undo/layers, individual edits, plate compression, atomic IndexedDB photo save and automatic reload restoration, reset/restore undo, failed/missing-photo storage, no network uploads, portrait/landscape layout.');
+  console.log('PASS POC 0.3: calibration handles, strong perspective, projected hit testing, inverse group drag/pinch, depth scaling, calibration/photo persistence, flat fallback, legacy migration; POC 0.25: mobile focus/toolbar/zoom, 2/4/6 templates, attached glassware, collection isolation, group drag/scale/rotation/spacing/duplicate/delete/undo/layers, individual edits, plate compression, atomic IndexedDB photo save and automatic reload restoration, reset/restore undo, failed/missing-photo storage, no network uploads, portrait/landscape layout.');
  }finally{await browser.close()}
 })().catch(e=>{console.error(e);process.exit(1)});
