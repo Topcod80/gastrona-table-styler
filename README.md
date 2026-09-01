@@ -1,41 +1,45 @@
-# Table Studio
+# Table Studio — POC 0.2
 
-A dependency-free, mobile-first dining-table photo editor. Static HTML, CSS, and JavaScript; no backend, accounts, analytics, remote fonts, or image uploads.
+Built on the existing POC 0.1. A static, mobile Safari table-styling game with no backend, accounts, AR, pricing, or tracking.
 
-## Run locally
+Live site: https://topcod80.github.io/gastrona-table-styler/
 
-Run `python3 -m http.server 8000` in this directory, then open `http://localhost:8000`. On an iPhone connected to the same Wi-Fi, open `http://YOUR_COMPUTER_LAN_IP:8000` in Safari. Opening an HTML file inside an iPhone file preview is not a reliable way to run the app.
+## Main flow
 
-Choose a photo or take one using the rear-camera file picker. Tap a piece to add it, drag with one finger, and use two fingers on the canvas to pinch and twist the selected item. Size and rotation sliders provide precise alternatives. Duplicate, delete, and undo work on the arrangement. Desktop users can select items and use arrow keys or Delete.
+Take or choose a photo → choose 2, 4, or 6 guests → mix collections → fine-tune by touch.
 
-## Privacy
+- Auto Set creates one plate, fork, knife, and glass per guest, in two opposing rows. Left/right are relative to the seated guest. Layouts are only applied when explicitly choosing a new guest count. Tapping the current count preserves edits. A different count replaces the arrangement; Undo restores it.
+- Ivory/Sage/Cobalt plates; Silver/Brass/Ink cutlery; Clear/Amber/Rose glasses. Collection changes replace only the visuals in that category, retaining item identity, position, size, rotation, and stacking order. Forks and knives change together.
+- Drag, pinch, twist, slider adjustments, add, duplicate, delete, and undo remain. Bring forward moves the selected piece to the top of the stack; Undo reverses this.
+- Reset table clears the pieces and guest count, keeping the photo and collection choices. Undo restores the layout.
+- Save arrangement stores a single named-by-app slot in localStorage, replacing the previous save. Restore is explicit and undoable. It restores item geometry, category choices, stacking order, guest count and the canvas ratio when there is no current photo.
+- Photo replacement and viewport changes never trigger Auto Set or discard edits.
 
-Images use a browser-local object URL. No image bytes are sent to a server, saved to browser persistent storage, or included in deployment. Refreshing discards the arrangement and photo. Removing/replacing a photo releases its object URL. The CSP sets `connect-src 'none'` and disallows form submissions. GitHub Pages will still receive normal requests for the website's three static files; hosting-provider logs are outside this app's control.
+## Privacy and storage
 
-## GitHub Pages deployment
+Photos remain temporary browser-local object URLs and are never uploaded or persisted. Reloading clears the photo and unsaved arrangement. The saved JSON contains only versioned item/collection/layout metadata, never photo bytes, object URLs, filenames, or EXIF. Reselect the same photo after restoring to match the original scene. Resetting the table does not erase the saved slot. Browser site-data clearing removes the save; private browsing/storage restrictions may prevent persistence. Storage failures show an error without altering the current scene. Invalid or incompatible saves are rejected.
 
-The workflow runs on pushes to `main`, checks app logic and mobile WebKit interactions, and deploys only after those checks pass. Pull requests run tests without deploying. A manual run is also available in Actions.
+There are no analytics, remote fonts, network APIs, or accounts. CSP has `connect-src 'none'` and `form-action 'none'`. Hosting still receives normal requests for the app files; provider logs are outside the app's control.
 
-Only `index.html`, `style.css`, and `app.js` enter the deployment artifact. Relative asset paths support the repository subpath. The final workflow step downloads all three deployed files and compares them with the commit.
+## Assets
 
-Expected URL: https://topcod80.github.io/gastrona-table-styler/
+`assets.js` is the visual adapter. Stable type/category/collection IDs are independent of gesture code. Replace its trusted SVG markup with repository-hosted image assets inside the same visual envelope. Maintain transparent padding, aspect ratio, and consistent orientation; update the deployment allowlist when adding files. Do not put arbitrary user markup into this adapter. Placeholder colors are illustrative, not actual GASTRONA products or finishes.
 
-If GitHub blocks automatic Pages enablement, the repository owner must select **Settings → Pages → Source → GitHub Actions** once, then rerun the failed deployment job. All deployed code comes from `main`.
+## Run and test
 
-## Tests
+Run `python3 -m http.server 8000` here, then visit `http://localhost:8000`.
 
-Install development dependencies with `npm install`, then install browser test engines with `npx playwright install webkit chromium`. Start the local server, and run `npm test` in another terminal. Tests use synthetic image data, mobile viewports, and browser pointer events; no personal photo is required. Set `BROWSER=chromium` to use Chromium instead of the default WebKit. Set `BASE_URL` to test a different local port.
+`npm run test:logic` runs dependency-free app-state checks. For browser tests: `npm install`, `npx playwright install --with-deps webkit`, start the server, then `npm test`. Browser tests cover the original gestures, all layouts and collection choices, transform/category isolation, layering, reset/undo, save/restore/reload, storage errors, photo non-persistence and mobile widths. They use only generated synthetic image data.
 
-## Physical iPhone acceptance check
+## Deployment
 
-- Open the deployed HTTPS page in Safari. Test both camera capture and Photos selection; confirm portrait and landscape photos are correctly oriented.
-- Add all four items; drag, pinch, twist, duplicate, delete, and undo.
-- Try portrait/landscape rotation and a large photo. Confirm items remain selectable and sliders scroll naturally outside the canvas.
-- Cancel the picker, choose the same photo again, and remove/replace a photo.
-- Reload and confirm the photo and arrangement are gone.
+Pushes to `main` run logic and mobile WebKit tests. Only successful tests allow deployment to the existing GitHub Pages site. Pull requests test without deploying. The public artifact contains only `index.html`, `style.css`, `assets.js`, `app.js`, and `.nojekyll`; code tests/docs and user photos are excluded. The deploy job verifies each served file against its commit. Pages source is GitHub Actions; deployed source branch is `main`.
 
-Camera picker behavior and HEIC decoding depend on the real iOS version. Automated desktop WebKit testing is not proof of physical iPhone camera or multi-touch behavior.
+## Physical iPhone acceptance / POC 0.3 questions
 
-## Prototype limits
-
-This is a 2D illustrative overlay, not AR: no depth detection, perspective matching, physical scale calibration, occlusion, export, or persistent projects. Included vector pieces are generic illustrations, not supplier product photographs. Undo applies to item edits, not photo replacement. Files over 40 MB are rejected; unsupported formats show an error and preserve the existing photo.
+- Verify native camera/Photos picker, cancel/reselection, HEIC, orientation and real two-finger pinch/twist on target iOS versions. Automated desktop WebKit is not an actual iPhone camera test.
+- Check selection precision with 24 pieces on a small screen and with overlapping objects. Fully covered items require moving the covering piece before selection.
+- Test whether two opposing rows suit typical table-photo angles. This is a 2D layout, without perspective, table detection or physical scale; fine-tuning is expected.
+- Check whether scrolling between canvas and collections feels playful enough, and whether a different guest count replacing the scene (with Undo) is clear.
+- Confirm users understand that Save retains one arrangement but not its photo, and Restore uses the currently selected photo when present.
+- Six-guest layouts on extremely wide photos can make pieces small. Reframing the photo can help. Photos over 40 MB are rejected; unsupported formats show an error.

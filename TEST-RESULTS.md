@@ -1,15 +1,7 @@
-# Verification — 1 September 2026
+# POC 0.2 verification
 
-Passed:
-- JavaScript syntax checks for app and browser test suite.
-- App logic exercised in a Node VM with a minimal DOM stub: add all four items, resize, rotate, duplicate, delete, undo, drag, pinch, twist, pointer cancellation, and keyboard delete.
-- Privacy code checks: no upload/network APIs or persistent browser storage; CSP blocks connections.
-- Local HTTP server returned 200 for HTML, CSS, and JavaScript.
+Local JavaScript syntax and dependency-free logic checks passed for the original actions and the game layer: 2/4/6 guest layouts, collection swaps without transform changes, reset/undo, metadata-only storage, restore validation and stacking order.
 
-Blocked:
-- Playwright mobile WebKit suite: browser downloaded, but required Linux GTK/GStreamer and related shared libraries are missing. No browser-rendering test or screenshot was completed.
-- Physical iPhone Safari camera, Photos/HEIC, orientation, and real multi-touch acceptance require an iPhone.
+The GitHub Actions workflow is the deployment gate and records the mobile WebKit result for each commit. It runs original interactions plus all collection variants, layouts, preservation checks, save/restore/reload, corrupt/blocked storage and responsive layouts. Deployment is followed by served-file byte comparison.
 
-Run the dependency-free logic check with `npm run test:logic`. Use README instructions for the included browser suite and physical-device acceptance checklist.
-
-Integration target: Topcod80/gastrona-table-styler, main branch. GitHub Actions runs the browser test suite and verifies deployed bytes; consult its run result for deployment status.
+Physical iPhone camera, HEIC and real multi-touch still require device testing. Synthetic images are used by the automated tests; no user table photos are committed or uploaded.
