@@ -139,7 +139,7 @@ function enterFocus(){if(focused)return;document.documentElement.style.setProper
 function exitFocus(){if(calibrating){cancelCalibration();return;}focused=false;pointers.clear();gesture=null;pan=null;document.body.classList.remove('editing');fitStage();window.scrollTo(0,previousScroll);}
 $('done').addEventListener('click',exitFocus);
 $('zoom').addEventListener('click',()=>{viewZoom=viewZoom===1?1.5:viewZoom===1.5?2:1;$('zoom').textContent='Zoom '+viewZoom+'×';fitStage();const item=current(),where=item?imagePoint(item):null;canvasWindow.scrollLeft=item?where.x*stage.clientWidth-canvasWindow.clientWidth/2:(canvasWindow.scrollWidth-canvasWindow.clientWidth)/2;canvasWindow.scrollTop=item?where.y*stage.clientHeight-canvasWindow.clientHeight/2:(canvasWindow.scrollHeight-canvasWindow.clientHeight)/2;});
-new ResizeObserver(()=>{pointers.clear();gesture=null;paint();}).observe(stage);
+new ResizeObserver(()=>{pointers.clear();gesture=null;cornerDrag=null;document.querySelectorAll('.corner').forEach(el=>el.classList.remove('dragging'));$('corner-loupe').hidden=true;paint();}).observe(stage);
 new ResizeObserver(()=>{if(focused)fitStage();}).observe(canvasWindow);
 window.visualViewport?.addEventListener('resize',()=>{document.documentElement.style.setProperty('--visible-height',window.visualViewport.height+'px');if(focused)fitStage();});
 function syncGameControls(){
@@ -247,7 +247,7 @@ function startCalibration(){
  $('done').textContent='Cancel';document.body.classList.add('calibrating');$('calibration-overlay').hidden=false;$('calibration-tools').hidden=false;
  viewZoom=.78;$('zoom').disabled=true;render();requestAnimationFrame(()=>{fitStage();canvasWindow.scrollLeft=0;canvasWindow.scrollTop=0;});paint();
 }
-function cancelCalibration(){$('corner-loupe').hidden=true;$('done').textContent='Done';calibrating=false;cornerDrag=null;document.body.classList.remove('calibrating');$('calibration-overlay').hidden=true;$('calibration-tools').hidden=true;$('zoom').disabled=false;viewZoom=1;$('zoom').textContent='Zoom 1×';fitStage();render();}
+function cancelCalibration(){document.querySelectorAll('.corner').forEach(el=>el.classList.remove('dragging'));$('corner-loupe').hidden=true;$('done').textContent='Done';calibrating=false;cornerDrag=null;document.body.classList.remove('calibrating');$('calibration-overlay').hidden=true;$('calibration-tools').hidden=true;$('zoom').disabled=false;viewZoom=1;$('zoom').textContent='Zoom 1×';fitStage();render();}
 $('calibrate').addEventListener('click',startCalibration);
 $('calibration-done').addEventListener('click',()=>{if(!TablePerspective.valid(calibrationDraft))return;checkpoint();setCalibration(structuredClone(calibrationDraft));fitArrangement();cancelCalibration();render();announce('Table calibrated. Settings follow this surface. Save to keep your calibration.');});
 $('calibration-reset').addEventListener('click',()=>{checkpoint();setCalibration(null);cancelCalibration();render();announce('Calibration removed. Flat editing restored. Undo brings it back.');});
