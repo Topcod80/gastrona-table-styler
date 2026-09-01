@@ -23,3 +23,15 @@ body.calibrating .piece{pointer-events:none}
 body.calibrating #stage{overflow:visible}
 body.calibrating #canvas-window{display:flex;align-items:center;justify-content:center;overflow:hidden}
 @media(max-height:500px) and (orientation:landscape){body.calibrating #calibration-tools{position:absolute;right:0;top:0;bottom:0;width:270px}}
+/* 0.35: generous invisible touch target, precise crosshair and local loupe. */
+.corner{width:72px;height:72px;min-width:72px;min-height:72px;border:0;background:transparent!important;box-shadow:none;color:transparent;overflow:visible}
+.corner::before{content:attr(data-label);position:absolute;inset:19px;border:2px solid white;border-radius:50%;background:#285e50;color:white;display:grid;place-items:center;box-shadow:0 1px 5px #0008;font-size:13px}
+.corner::after{content:'+';position:absolute;inset:0;display:grid;place-items:center;color:white;font-size:22px;pointer-events:none}
+.corner.dragging::before{background:#9d6a22}
+.corner.dragging::after{color:#fff4cd}
+#corner-loupe{position:absolute;left:calc(50% - 48px);top:0;width:96px;height:96px;border-radius:50%;border:3px solid white;box-shadow:0 2px 12px #0006;z-index:8;pointer-events:none;background-repeat:no-repeat}
+#corner-loupe::after{content:'+';position:absolute;inset:0;display:grid;place-items:center;color:white;text-shadow:0 0 3px #000;font-size:30px}
+.mode-switch #edit-fit{font-size:11px;flex:1.1}
+@media(max-width:360px){.mode-switch button{font-size:11px}.mode-switch #edit-save{flex-basis:42px}}
+.corner::before{inset:auto;left:7px;top:0;width:23px;height:23px;font-size:11px}
+.corner::after{inset:24px;border:2px solid white;border-radius:50%;font-size:18px;background:#285e50aa}

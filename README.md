@@ -1,4 +1,4 @@
-# Table Studio — POC 0.3
+# Table Studio — POC 0.35
 
 An incremental update to the existing photo-local table styling prototype.
 
@@ -22,7 +22,7 @@ Place Setting is the default selection mode. A grouped plate selects its plate, 
 - Compact/Standard/Formal spread the setting around its plate without independently moving unrelated groups or resizing the pieces. With no selected group, the preset applies to all groups. The preset also becomes the default for the next Auto Set.
 - A different guest count intentionally replaces the layout; Undo restores it. Selecting the same count preserves edits. Collection swaps preserve groups, geometry, layering and plate compression.
 
-`geometry.js` contains the shared layout/group transform math, with image width used as the physical coordinate unit so rotation and uniform scaling preserve relative spacing. `assets.js` retains the three placeholder collections per category. Contact shadows and plate-only vertical compression provide a manual visual adjustment, an additional manual adjustment; calibrated scenes also use projective mapping.
+`geometry.js` contains the shared layout/group transform math, using a consistent logical metric so rotation and uniform scaling preserve relative spacing. `assets.js` retains the three placeholder collections per category. Contact shadows and plate-only vertical compression provide a manual visual adjustment, an additional manual adjustment; calibrated scenes also use projective mapping.
 
 ## Local photo persistence
 
@@ -38,23 +38,29 @@ Run `npm run test:logic` for geometry invariants. For browser tests: `npm instal
 
 The mobile WebKit suite covers focused toolbar visibility, zoom, 6-guest grouping and glass proximity, all collection choices, group transforms and presets, individual editing, duplicate/delete/undo/layers, local photo Blob storage and automatic restore after reload, failed/missing-photo storage, reset, and portrait/landscape sizes. Tests use generated synthetic pixels only.
 
-Pushes to main test before deployment. The public allowlist contains only HTML/CSS and assets/geometry/perspective/storage/app JavaScript. Deployed files are downloaded and byte-compared with the commit.
+Pushes to main test before deployment. The public allowlist contains only HTML/CSS and assets/geometry/perspective/fit/storage/app JavaScript. Deployed files are downloaded and byte-compared with the commit.
 
 ## Remaining physical-device checks
 
 Actual iPhone camera/HEIC decoding, real two-finger gestures, dynamic Safari bars and keyboard/viewport changes, and long-term/private-browsing IndexedDB retention need real device checks. The visual remains a 2D illustrative composition, without occlusion, measured physical calibration, table detection, camera tracking or AR. Large group sizes can extend past the image; use smaller group size or viewing zoom to regain context. Overlapping groups may require moving the front setting to select a covered one.
 
 
-## POC 0.3 table surface mapping
+## POC 0.35 table fit and shape-preserving rendering
 
-Calibrate table opens a fitted view with four 48px draggable handles: near-left, near-right, far-right, far-left. Move them onto the visible tabletop. Done applies the surface; Cancel discards corner edits; Reset calibration returns to flat mode and is undoable. Crossed, reversed, very narrow or tiny quadrilaterals cannot be applied. A new photo clears the previous photo's calibration. Calibration is optional.
+Four corners still define the unit-square-to-image homography. There is **no fixed 3:2 plane** in current layouts. The average opposing edge lengths in image pixels provide an adaptive layout ratio (limited to 0.2–5 to avoid degenerate layout metrics). This is a visual estimate, not a recovery of unknown physical table dimensions. The homography is solved with partial-pivot Gaussian elimination and inverted for logical dragging/pinching.
 
-`perspective.js` solves the eight linear equations for a 3×3 homography (h33 = 1) with partial-pivot Gaussian elimination. A normalized **3:2 logical tabletop** maps to the four normalized image corners. The CSS `matrix3d` is the same homography in pixels, applied to the entire tableware layer. It projects object shapes, orientations, contact shadows and group spacing together, rather than scaling isolated stickers. Far-edge scale arises from homogeneous division; it is not an arbitrary depth multiplier. A parallel-sided calibration has little or no depth shrinkage.
+Artwork no longer inherits the homography's shear or unequal scaling. Each product center is projected individually. At that point, the local homography Jacobian supplies a single uniform scale (its smaller singular value) and the projected direction of the cutlery's longitudinal axis. Plates with the default angle remain circular on screen, while their position and size change with perspective. The manual Plate angle control remains an explicit user-selected compression. This is a shape-preserving illustration, not a physically exact perspective rendering of a 3D circular plate. Glasses retain plan-view placeholders. Shadows scale with the artwork.
 
-Pointer positions pass through the inverse homography before the existing drag/pinch/twist math. Scaling and rotation occur in the logical plane; all four group members retain their relative geometry. Auto Set always uses the logical plane in calibrated mode, independent of image orientation. Existing grouped offsets are converted when changing between flat and calibrated coordinate metrics. Group centers are corrected together at the logical boundary; oversized settings and artwork edges can extend beyond it.
+`fit.js` shares the exact rendering envelopes with the editor. Rotated bounds for plate, fork, knife and glass, plus a contact-shadow allowance, are inverse-projected into tabletop coordinates and checked against an inset usable area. Fitting first translates the entire setting inward. If necessary, it reduces all member sizes and their relative offsets together in 5% steps, down to the existing minimum item size. Groups, rotations, collection IDs and relative geometry are retained. It does not separate cutlery/glassware from their plate. Fitting is deterministic, idempotent and undoable. It does not resolve every overlap in a heavily duplicated arrangement.
 
-Calibrated glassware uses a circular plan-view placeholder with the same collection colors, so the front-view stem illustration is not flattened onto the plane. Plates, cutlery and shadows project directly onto the table. These are still 2D placeholders: no glass height, occlusion, lighting estimation or physical scale is inferred. Four corners do not identify the table's true aspect ratio, which is assumed to be 3:2.
+Auto Set fits calibrated 2/4/6-guest layouts. Fit to table is available in setup and the focused toolbar. Group drag/resize/rotation and spacing edits also respect the fitted footprint. Uncalibrated mode retains its existing interactions; the explicit Fit command can fit to the image rectangle. If the minimum size cannot fit, the UI reports the limitation rather than silently declaring success.
 
-Scene version 30 includes the four corners (or null). Save writes this together with the photo in the existing atomic IndexedDB record; reload restores all three. Version 25 saves migrate to flat mode with their photo intact. No automatic save of unsaved edits. Existing storage errors stay explicit. No backend, tracking, image upload or external product assets were added.
+Corner controls use a 72px touch target with a precise center crosshair, numbered badge and local-photo magnifier. Grabbing off-center preserves the initial finger offset. Cancel leaves the previous calibration intact; Done applies and fits it; Reset calibration and Undo remain available. A new photo clears the old calibration.
 
-The WebKit suite now also checks calibration pointer handlers, minimum handle sizes, angled six-guest render size, projected plate hit testing, inverse-mapped group gestures, corner validation, calibration reset/undo, new-photo invalidation and saved calibration/photo restoration. Numerical tests check corner fit, inverse round trips, depth shrinkage and CSS/mathematical projection equivalence. WebKit automation is not certification of physical iPhone camera, touch or storage behavior.
+Scene version 35 saves photo, arrangement and four corners in the existing atomic IndexedDB record. POC 0.3 saves migrate their grouped offsets from the old layout metric; POC 0.25 saves retain flat mode. Reload restores the last explicitly saved state. No backend, uploads, real products, telemetry or AR was added.
+
+## Validation status
+
+Numerical tests cover adaptive proportions, corner/inverse mapping, depth scale, narrow/wide/strong-angle layouts, 2/4/6 complete footprint containment, oversized group recovery, relative geometry and fit idempotence. Mobile WebKit tests cover circular DOM artwork, containment, fit/undo, large handles/loupe, local persistence and simulated viewport-height changes, alongside the existing POC 0.25/0.3 regression suite.
+
+**Physical iPhone Safari, camera capture, valid HEIC decoding and actual browser-bar transitions have not been tested in this environment.** Synthetic PointerEvents and viewport changes are not physical device evidence. Unsupported image handling is tested using intentionally invalid HEIC bytes, which does not establish valid HEIC support. See [DEVICE_VALIDATION.md](DEVICE_VALIDATION.md) for the exact remaining device checks. POC 1.0 live AR should remain gated on those checks and visual evaluation with real table photos.

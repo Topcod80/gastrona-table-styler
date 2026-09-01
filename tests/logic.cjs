@@ -28,7 +28,25 @@ for(let x=0;x<=1;x+=.1)for(let y=0;y<=1;y+=.1){const p=P.project(inv,P.project(h
 const widthAt=y=>{const a=P.project(h,{x:.4,y}),b=P.project(h,{x:.6,y});return Math.hypot(a.x-b.x,a.y-b.y)};
 assert.ok(widthAt(.2)<widthAt(.8)*.7);
 assert.equal(P.valid([q[0],q[2],q[1],q[3]]),false);assert.equal(P.valid(Array(4).fill(q[0])),false);
-// CSS matrix3d and mathematical mapping must agree at points across the plane.
-const css=P.css(h,600,400).slice(9,-1).split(',').map(Number);
-for(const p of [...source,{x:.34,y:.22},{x:.88,y:.5}]){const x=p.x*600,y=p.y*400,w=css[3]*x+css[7]*y+css[15],v=P.project(h,p);close((css[0]*x+css[4]*y+css[12])/w,v.x*600);close((css[1]*x+css[5]*y+css[13])/w,v.y*400)}
-console.log('PASS: homography corner fit, inverse round trips, strong depth scaling, invalid quad rejection, CSS projection equivalence.');
+const F=require('../fit.js');
+const fixtures={
+ narrow:[{x:.39,y:.95},{x:.64,y:.92},{x:.6,y:.1},{x:.44,y:.12}],
+ wide:[{x:.03,y:.69},{x:.97,y:.69},{x:.9,y:.4},{x:.1,y:.4}],
+ angled:q,
+ severe:[{x:.04,y:.95},{x:.96,y:.92},{x:.58,y:.12},{x:.42,y:.13}]
+};
+assert.notEqual(P.ratio(fixtures.narrow,1.5),P.ratio(fixtures.wide,1.5));
+for(const [name,quad] of Object.entries(fixtures))for(const n of [2,4,6]){
+ const ctx=F.context(quad,1.5),seats=G.layout(n,ctx.ratio,'formal');
+ for(const seat of seats){
+  const fitted=F.fit(seat.items,ctx);assert.ok(fitted.ok,name+' '+n+' fits');assert.ok(F.inside(fitted.items,ctx));
+  const a=seat.items,b=fitted.items;
+  for(let j=1;j<4;j++){close(Math.hypot(b[j].x-b[0].x,(b[j].y-b[0].y)/ctx.ratio),Math.hypot(a[j].x-a[0].x,(a[j].y-a[0].y)/ctx.ratio)*fitted.factor);}
+  assert.deepEqual(F.fit(fitted.items,ctx).items,fitted.items,'Fit is idempotent');
+  const displaced=G.transform(seat.items,G.pivot(seat.items),ctx.ratio,{dx:-2,dy:2,factor:2}).items;
+  const rescued=F.fit(displaced,ctx);assert.ok(rescued.ok,name+' large displaced setting');assert.ok(F.inside(rescued.items,ctx));
+ }
+ for(const y of [.2,.8]){const p=P.pose(ctx.h,{x:.5,y,rotation:0},ctx.ratio,1.5);assert.ok(Number.isFinite(p.scale)&&p.scale>0);}
+}
+const ctx=F.context(q,1.5);assert.ok(F.pose({x:.5,y:.2,rotation:0},ctx).scale<F.pose({x:.5,y:.8,rotation:0},ctx).scale);
+console.log('PASS: adaptive quad proportions, uniform artwork scaling, narrow/wide/strong-angle 2/4/6 footprint containment, large-group recovery, proportional fitting, idempotence.');

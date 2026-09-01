@@ -60,7 +60,7 @@ let pw;try{pw=require('playwright')}catch{pw=require(process.env.CODEX_PRIMARY_R
   // Save the photo and scene atomically, then auto-restore both on reload.
   const saved=await state();assert.equal(await page.evaluate(()=>{try{validateScene(scene());return 'valid'}catch(e){return e.message}}),'valid');await tap('save');await page.waitForFunction(()=>!busy);if(!(await page.locator('#storage-note').textContent()).startsWith('Photo +')){throw Error(await page.evaluate(async()=>{try{await TableStorage.write({scene:scene(),photo:photoBlob,hadPhoto:!!photoBlob});return 'Retry wrote; UI: '+document.getElementById('storage-note').textContent}catch(e){return e.name+': '+e.message}}));}
   const record=await page.evaluate(async()=>{const r=await TableStorage.read();return {bytes:r.photo.size,type:r.photo.type,hadPhoto:r.hadPhoto,version:r.scene.version}});
-  assert.equal(record.bytes,file.buffer.length);assert.equal(record.hadPhoto,true);assert.equal(record.version,30);
+  assert.equal(record.bytes,file.buffer.length);assert.equal(record.hadPhoto,true);assert.equal(record.version,35);
   await page.reload();await ready();assert.deepEqual(await state(),saved);assert.match(await page.locator('#table-photo').getAttribute('src'),/^blob:/);assert.equal(await page.evaluate(()=>photoBlob.size),file.buffer.length);
   await tap('reset');assert.equal((await state()).items.length,0);assert.ok(await page.evaluate(()=>!!photoBlob));await tap('undo');assert.deepEqual(await state(),saved);
   await tap('guests-2');await tap('restore');await page.waitForFunction(()=>!busy&&items.length===24);assert.deepEqual(await state(),saved);await tap('undo');assert.equal((await state()).items.length,8);await tap('restore');await page.waitForFunction(()=>!busy&&items.length===24);
@@ -85,9 +85,9 @@ let pw;try{pw=require('playwright')}catch{pw=require(process.env.CODEX_PRIMARY_R
   await tap('calibrate');await page.waitForFunction(()=>calibrating);await page.waitForTimeout(100);
   const q=[{x:.05,y:.93},{x:.96,y:.83},{x:.66,y:.16},{x:.4,y:.2}];
   for(let i=0;i<4;i++){
-   const handle=page.locator('.corner').nth(i),box=await handle.boundingBox();assert.ok(box.width>=44&&box.height>=44);assert.ok(box.x>=0&&box.x+box.width<=391);
+   const handle=page.locator('.corner').nth(i),box=await handle.boundingBox();assert.ok(box.width>=72&&box.height>=72);assert.ok(box.x>=0&&box.x+box.width<=391);
    await handle.evaluate((el,{i,p})=>{const r=stage.getBoundingClientRect(),saved=el.setPointerCapture;el.setPointerCapture=()=>{};
-    const emit=type=>el.dispatchEvent(new PointerEvent(type,{bubbles:true,cancelable:true,pointerType:'touch',pointerId:100+i,clientX:r.left+p.x*r.width,clientY:r.top+p.y*r.height}));
+    const start={...calibrationDraft[i]};const emit=type=>{const v=type==='pointerdown'?start:p;el.dispatchEvent(new PointerEvent(type,{bubbles:true,cancelable:true,pointerType:'touch',pointerId:100+i,clientX:r.left+v.x*r.width,clientY:r.top+v.y*r.height}));};
     emit('pointerdown');emit('pointermove');emit('pointerup');el.setPointerCapture=saved;
    },{i,p:q[i]});
   }
@@ -110,7 +110,7 @@ let pw;try{pw=require('playwright')}catch{pw=require(process.env.CODEX_PRIMARY_R
   });
   mappedGesture.dragged.forEach((p,i)=>{near(p.x,mappedGesture.before[i].x+.03);near(p.y,mappedGesture.before[i].y-.04)});
   const f=mappedGesture.after[0].scale/mappedGesture.dragged[0].scale;
-  distances(mappedGesture.after,1.5).forEach((d,i)=>near(d,distances(mappedGesture.dragged,1.5)[i]*f));
+  distances(mappedGesture.after,mappedGesture.ratio).forEach((d,i)=>near(d,distances(mappedGesture.dragged,mappedGesture.ratio)[i]*f));
   await tap('tool-size');before=await state();await page.locator('#size').press('ArrowRight');after=await state();assert.notDeepEqual(before.items,after.items);
   await tap('duplicate');assert.equal((await state()).items.length,28);await tap('delete');await tap('undo');await tap('undo');assert.equal((await state()).items.length,24);
   await tap('mode-item');before=await state();await page.locator('#size').press('ArrowRight');after=await state();assert.equal(after.items.filter((p,i)=>JSON.stringify(p)!==JSON.stringify(before.items[i])).length,1);await tap('mode-setting');
@@ -121,7 +121,39 @@ let pw;try{pw=require('playwright')}catch{pw=require(process.env.CODEX_PRIMARY_R
   await tap('calibrate');await tap('calibration-reset');assert.equal((await state()).calibration,null);await tap('undo');assert.deepEqual(await state(),calibrated);await tap('done');
   // Replacing a photo clears calibration; undo restores both the original photo and plane.
   await page.locator('#photo-input').setInputFiles(file);await page.waitForFunction(()=>calibration===null);await tap('undo');assert.deepEqual(await state(),calibrated);
-  const legacy=await page.evaluate(()=>validateScene({...scene(),version:25,calibration:undefined}));assert.equal(legacy.calibration,null);assert.equal(legacy.version,30);
+  const legacy=await page.evaluate(()=>validateScene({...scene(),version:25,calibration:undefined}));assert.equal(legacy.calibration,null);assert.equal(legacy.version,35);
+  // POC 0.35: actual DOM artwork has equal X/Y scale across each table shape.
+  const shapes={
+   narrow:[{x:.39,y:.95},{x:.64,y:.92},{x:.6,y:.1},{x:.44,y:.12}],
+   wide:[{x:.03,y:.69},{x:.97,y:.69},{x:.9,y:.4},{x:.1,y:.4}],
+   angled:q,
+   severe:[{x:.04,y:.95},{x:.96,y:.92},{x:.58,y:.12},{x:.42,y:.13}]
+  };
+  for(const [name,quad] of Object.entries(shapes)){
+   await tap('calibrate');await page.evaluate(q=>{calibrationDraft=q;paint()},quad);await tap('calibration-done');await tap('done');
+   for(const n of [2,4,6]){await tap('guests-'+n);assert.equal((await state()).items.length,n*4);
+    assert.equal(await page.evaluate(()=>{const c=TableFit.context(calibration,sceneRatio);return TableFit.inside(items,c)}),true,name+' '+n+' contained');
+    const plates=await page.locator('.piece[aria-label^="plate"]').evaluateAll(els=>els.map(el=>{const m=new DOMMatrix(getComputedStyle(el).transform);return {a:Math.hypot(m.a,m.b),b:Math.hypot(m.c,m.d),w:parseFloat(el.style.width),h:parseFloat(el.style.height)}}));
+    for(const p of plates){near(p.a,p.b);near(p.w,p.h);}
+   }
+   // Fit command is reversible and checks rotated full artwork, including glassware.
+   await page.evaluate(()=>{const id=groups[0].id;for(const i of items.filter(i=>i.groupId===id)){i.x-=.3;i.scale*=1.5;}render()});
+   const oversize=await state();await tap('fit-table');assert.equal(await page.evaluate(()=>TableFit.inside(items,TableFit.context(calibration,sceneRatio))),true);const fitted=await state();await tap('undo');assert.deepEqual(await state(),oversize);await tap('fit-table');assert.deepEqual(await state(),fitted);
+   await page.screenshot({path:'test-results/table-fit-'+name+'.png',fullPage:true});
+  }
+  // Offset grabs do not jump the corner onto the center of a finger target.
+  await tap('calibrate');await page.waitForTimeout(100);
+  const grabbed=await page.locator('.corner').first().evaluate(el=>{const r=el.getBoundingClientRect(),before={...calibrationDraft[0]},original=el.setPointerCapture;el.setPointerCapture=()=>{};
+   const emit=t=>el.dispatchEvent(new PointerEvent(t,{bubbles:true,pointerType:'touch',pointerId:77,clientX:r.x+8,clientY:r.y+9}));emit('pointerdown');emit('pointermove');const during={...calibrationDraft[0]},loupe=!document.getElementById('corner-loupe').hidden;emit('pointerup');el.setPointerCapture=original;return {before,during,loupe};});
+  assert.deepEqual(grabbed.before,grabbed.during);assert.equal(grabbed.loupe,true);await tap('calibration-cancel');await tap('done');
+  // Viewport resizing simulates available-height changes, not actual Safari bars.
+  await page.locator('.piece[aria-label^="plate"]').first().tap();await page.waitForFunction(()=>focused);
+  for(const height of [664,844,720]){await page.setViewportSize({width:390,height});await page.waitForTimeout(100);const r=await page.locator('#inspector').boundingBox();assert.ok(r.y>=0&&r.y+r.height<=height+1);}
+  await tap('done');await page.setViewportSize({width:390,height:844});
+  assert.equal(await page.locator('#camera-input').getAttribute('capture'),'environment');
+  // Unsupported/corrupt HEIC must report failure and retain the previous photo.
+  const preserved=await state();await page.locator('#photo-input').setInputFiles({name:'invalid.heic',mimeType:'image/heic',buffer:Buffer.from('unsupported-test')});await page.waitForFunction(()=>document.getElementById('status').textContent.includes('could not be opened'));assert.deepEqual(await state(),preserved);
+  console.log('PASS POC 0.35: narrow/wide/severe perspective; circular DOM artwork; 2/4/6 complete footprints contained; Fit undo; offset handle/loupe; viewport-height simulation. Physical iPhone/camera/valid HEIC NOT TESTED.');
   assert.deepEqual(errors,[]);assert.deepEqual(external,[]);
   console.log('PASS POC 0.3: calibration handles, strong perspective, projected hit testing, inverse group drag/pinch, depth scaling, calibration/photo persistence, flat fallback, legacy migration; POC 0.25: mobile focus/toolbar/zoom, 2/4/6 templates, attached glassware, collection isolation, group drag/scale/rotation/spacing/duplicate/delete/undo/layers, individual edits, plate compression, atomic IndexedDB photo save and automatic reload restoration, reset/restore undo, failed/missing-photo storage, no network uploads, portrait/landscape layout.');
  }finally{await browser.close()}
