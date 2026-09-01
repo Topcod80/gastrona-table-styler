@@ -29,6 +29,8 @@ Severity: P1 blocks a core function/data integrity; P2 materially degrades inter
 | A09 | Hardening only | Generated center-ring normals have magnitude 0.066 on the plate and 0.0063 on the glass, but Three.js normalizes them in its vertex shader. No visual lighting failure was demonstrated; this is not counted as a reproduced rendering bug. | Normalize stored normals once for asset consistency. `tests/models.cjs` checks every normal, finite vertices, outward volume, actual thickness, glass height and material properties. The shipped shader already protected rendering. |
 | A10 | P3 | The graphics-memory formula counts 256×256×8 bytes for a packed PMREM map that occupies a larger render target. It also omits shadow depth allocation. This understates memory without changing actual rendering. | Count the actual environment target dimensions and shadow color/depth buffers. T/A assert the full packed map is included. Unknown MSAA/driver overhead and decoded photo memory remain explicitly excluded. |
 
+| A11 | P3 | Normal scene initialization emits deprecated PCFSoftShadowMap and PMREM blur clipping warnings. The requested environment blur needs 30 samples where this Three.js build supports 20. | Use supported PCFShadowMap (the same fallback Three.js already selected) and reduce extra environment blur to 0.03 radians. `normal-runtime-console-clean` gates normal photo/layout/stress flows before deliberate context-loss injection. |
+
 The contrast criterion follows [W3C WCAG 2.2 SC 1.4.3](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html). This is a targeted accessibility check, not a claim of full WCAG conformance.
 
 ## Complete test matrix
@@ -102,7 +104,7 @@ L = `tests/logic.cjs`; I = `tests/interaction.cjs`; U = `tests/live-qa.cjs`; T =
 | Very large file | >40MB rejected | A |
 | Large valid photo | Synthetic 6000×4000 JPEG decodes locally | A; does not prove iPhone memory safety |
 | Privacy / network | GET-only same-origin assets, no request body/image/blob uploads; CSP connect-src:none | U/T/A + source |
-| Console quality | No uncaught errors on normal flows; expected injected loss/load-denial warnings separated | I/U/T/A |
+| Console quality | No uncaught errors or normal-runtime console warnings; explicit warning gate precedes injected context loss | I/U/T/A |
 | Deployment identity | Every deployed application file/bundle byte-compared against build | Pages workflow, followed by live U/T/A |
 
 ## Rendering and code review

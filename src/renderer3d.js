@@ -5,9 +5,9 @@ import {createFrameHealth} from './frame-health.js';
 export function create({canvas,onFailure,onFrame}){
  const renderer=new T.WebGLRenderer({canvas,alpha:true,antialias:true,powerPreference:'low-power',preserveDrawingBuffer:false});
  renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.5));renderer.setClearColor(0,0);renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;
- renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;
+ renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFShadowMap;
  const scene=new T.Scene(),camera=new T.PerspectiveCamera(),geometries=makeGeometries(),materials=makeMaterials(),nodes=new Map(),roots=new Map();
- const pmrem=new T.PMREMGenerator(renderer),room=new RoomEnvironment(),env=pmrem.fromScene(room,.06,.1,100);scene.environment=env.texture;scene.environmentIntensity=.65;room.dispose();pmrem.dispose();
+ const pmrem=new T.PMREMGenerator(renderer),room=new RoomEnvironment(),env=pmrem.fromScene(room,.03,.1,100);scene.environment=env.texture;scene.environmentIntensity=.65;room.dispose();pmrem.dispose();
  scene.add(new T.HemisphereLight(0xfff4df,0x656b72,2));
  const light=new T.DirectionalLight(0xfff5df,2.8);light.position.set(-.5,1.5,-.5);light.target.position.set(.5,0,.5);light.castShadow=true;light.shadow.mapSize.set(512,512);light.shadow.camera.left=-1.5;light.shadow.camera.right=1.5;light.shadow.camera.top=1.5;light.shadow.camera.bottom=-1.5;light.shadow.camera.near=.01;light.shadow.camera.far=8;light.shadow.bias=-.0003;light.shadow.normalBias=.001;light.shadow.radius=3;scene.add(light,light.target);
  const floorGeo=new T.PlaneGeometry(1,1),floorMat=new T.ShadowMaterial({opacity:.15}),floor=new T.Mesh(floorGeo,floorMat);floor.rotation.x=-Math.PI/2;floor.receiveShadow=true;scene.add(floor);
