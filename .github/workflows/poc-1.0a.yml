@@ -1,4 +1,4 @@
-name: Test and publish isolated POC 1.0A
+name: Test isolated POC 1.0A
 on:
   push:
     branches: [poc-1.0-live-ar]
@@ -7,7 +7,7 @@ permissions:
   contents: read
   actions: read
 concurrency:
-  group: poc-1.0a-pages
+  group: poc-1.0a-tests
   cancel-in-progress: false
 jobs:
   test:
@@ -55,74 +55,4 @@ jobs:
         if: always()
         with:
           name: poc-1.0a-pre-qa
-          path: test-results/poc-1.0a/
-  deploy:
-    needs: test
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    permissions:
-      contents: read
-      actions: read
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: https://topcod80.github.io/gastrona-table-styler/poc-1.0a/
-    env:
-      LIBGL_ALWAYS_SOFTWARE: '1'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
-        with:
-          name: poc-1.0a-build
-          path: poc-1.0a/dist/
-      - name: Obtain the exact published stable site
-        uses: actions/download-artifact@v4
-        with:
-          name: github-pages
-          run-id: 33553271090
-          github-token: ${{ github.token }}
-          path: /tmp/stable-pages
-      - name: Keep stable root byte-identical; add experiment subdirectory
-        run: |
-          mkdir _site
-          tar -xf /tmp/stable-pages/artifact.tar -C _site
-          test -f _site/index.html
-          test ! -e _site/poc-1.0a
-          cp -r poc-1.0a/dist _site/poc-1.0a
-          python3 - <<'PY'
-          import hashlib,json
-          from pathlib import Path
-          files={str(p.relative_to('_site')):hashlib.sha256(p.read_bytes()).hexdigest() for p in Path('_site').rglob('*') if p.is_file() and 'poc-1.0a' not in p.parts}
-          Path('/tmp/stable-runtime-hashes.json').write_text(json.dumps(files))
-          PY
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: _site
-      - name: Publish isolated test path
-        id: deploy
-        uses: actions/deploy-pages@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-      - run: npm ci --ignore-scripts
-      - run: npx playwright install --with-deps webkit
-      - name: Verify stable root unchanged and test the deployed experiment
-        env:
-          BASE_URL: https://topcod80.github.io/gastrona-table-styler/poc-1.0a/
-        run: |
-          python3 - <<'PY'
-          import hashlib,json,os,urllib.request
-          root='https://topcod80.github.io/gastrona-table-styler/'
-          for name,digest in json.load(open('/tmp/stable-runtime-hashes.json')).items():
-              actual=urllib.request.urlopen(root+name+'?verify='+os.environ['GITHUB_SHA']).read()
-              assert hashlib.sha256(actual).hexdigest()==digest,name
-          print('Stable published files are byte-identical.')
-          PY
-          node poc-1.0a/tests.cjs
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: poc-1.0a-qa
           path: test-results/poc-1.0a/

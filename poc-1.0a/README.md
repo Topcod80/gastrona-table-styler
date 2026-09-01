@@ -2,7 +2,9 @@
 
 Branch: `poc-1.0-live-ar`. Stable source remains `main` / `v0.4-stable` at `2d044013ae71992a82ffe72169ab90156b1287e8`.
 
-Test URL: https://topcod80.github.io/gastrona-table-styler/poc-1.0a/
+Test URL (owner-only): https://gastrona-single-plate-ar.topcod.chatgpt.site
+
+The stable GitHub Pages URL is unchanged.
 
 ## Decision, checked 2026-09-01
 
@@ -60,13 +62,15 @@ node poc-1.0a/tests.cjs
 
 Build output is `poc-1.0a/dist/`; generated binaries are built from source in CI. `build.json` records geometry dimensions, source/asset hashes and the commit. OpenUSD opens the actual archive and verifies topology, bounds, material binding, metre units, horizontal anchoring and 64-byte ZIP alignment.
 
-Mobile WebKit tests exercise the real 3D preview, rotate/reset, small portrait/landscape, native link markup under simulated capability detection, unavailable graphics, context loss, bundle failure, storage absence and network requests. Simulating capability does **not** emulate Apple's native viewer or certify world tracking. Post-deployment tests also verify USDZ delivery/MIME. Raw results are retained in workflow artifacts. Playwright’s WebKit screenshot helper injects an inline stylesheet, so screenshot calls are excluded from the strict-CSP clean-console regression instead of relaxing the production policy.
+Mobile WebKit tests exercise the real 3D preview, rotate/reset, small portrait/landscape, native link markup under simulated capability detection, unavailable graphics, context loss, bundle failure, storage absence and network requests. Simulating capability does **not** emulate Apple's native viewer or certify world tracking. The test server checks USDZ delivery/MIME; production/native handoff still needs a physical Safari check. Raw results are retained in workflow artifacts. Playwright’s WebKit screenshot helper injects an inline stylesheet, so screenshot calls are excluded from the strict-CSP clean-console regression instead of relaxing the production policy.
 
 ## Deployment isolation
 
-Only this folder and `.github/workflows/poc-1.0a.yml` change on the development branch. CI verifies `main` and the stable tag still point to the fixed stable SHA. It downloads the already verified stable Pages artifact from run `33553271090`, adds only `/poc-1.0a/`, and verifies all stable published files are byte-identical after deployment. No push to main/tag is performed.
+Only this folder and `.github/workflows/poc-1.0a.yml` change on the development branch. CI verifies `main` and the stable tag still point to the fixed stable SHA. No push to main/tag is performed.
 
-That pinned Actions artifact must remain available for future preview redeployments; after its retention expires, restore the same stable archive or explicitly regenerate and verify it. Do not silently substitute an unverified main build. The existing main deployment workflow is unchanged and could remove the preview path if main is redeployed; this is an isolated experiment, not a second production release.
+The attempted GitHub Pages deployment in run `33557300434` was rejected before the deployment job started. Its mobile WebKit test job passed all 24 checks, and OpenUSD validated the actual asset. The exact environment rejection detail was not available through the connector, so it is not asserted here. No Pages settings or deployment restrictions were changed. The experiment is instead published separately through Sites; the workflow now tests and produces build artifacts only.
+
+The separate hosting mirror contains only this experiment, its existing plate geometry source and build dependencies. Its stable-app links point to the unchanged GitHub Pages root. Owner-only hosting may require sign-in; whether Apple's native asset fetch carries that authentication needs physical Safari validation. This is not a claimed successful on-device AR test.
 
 ## Physical iPhone acceptance — NOT RUN
 
