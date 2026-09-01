@@ -58,7 +58,7 @@ let pw;try{pw=require('playwright')}catch{pw=require(process.env.CODEX_PRIMARY_R
   await page.screenshot({path:'test-results/focused-six-guests.png',fullPage:false});
   await tap('done');assert.equal(await page.locator('body').evaluate(e=>e.classList.contains('editing')),false);
   // Save the photo and scene atomically, then auto-restore both on reload.
-  const saved=await state();await tap('save');await page.waitForFunction(()=>!busy&&document.getElementById('storage-note').textContent.startsWith('Photo +'));
+  const saved=await state();assert.equal(await page.evaluate(()=>{try{validateScene(scene());return 'valid'}catch(e){return e.message}}),'valid');await tap('save');await page.waitForFunction(()=>!busy);if(!(await page.locator('#storage-note').textContent()).startsWith('Photo +')){throw Error(await page.evaluate(async()=>{try{await TableStorage.write({scene:scene(),photo:photoBlob,hadPhoto:!!photoBlob});return 'Retry wrote; UI: '+document.getElementById('storage-note').textContent}catch(e){return e.name+': '+e.message}}));}
   const record=await page.evaluate(async()=>{const r=await TableStorage.read();return {bytes:r.photo.size,type:r.photo.type,hadPhoto:r.hadPhoto,version:r.scene.version}});
   assert.equal(record.bytes,file.buffer.length);assert.equal(record.hadPhoto,true);assert.equal(record.version,25);
   await page.reload();await ready();assert.deepEqual(await state(),saved);assert.match(await page.locator('#table-photo').getAttribute('src'),/^blob:/);assert.equal(await page.evaluate(()=>photoBlob.size),file.buffer.length);
