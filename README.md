@@ -1,8 +1,12 @@
-# Table Studio — POC 0.4
+# Table Studio — POC 0.4 Stable
 
 Photo-local table styling with real-time Three.js tableware and a 2D fallback.
 
 Live: https://topcod80.github.io/gastrona-table-styler/
+
+Stable baseline: [`v0.4-stable`](https://github.com/Topcod80/gastrona-table-styler/releases/tag/v0.4-stable), **POC 0.4 Stable**. This freezes the audited photo-based prototype; it is not physical-iPhone or AR certification. The `poc-1.0-live-ar` branch starts from this baseline with no AR changes.
+
+Documentation: [Release notes](RELEASE_NOTES_v0.4.md) · [Changelog](CHANGELOG.md) · [Architecture](ARCHITECTURE.md) · [Current QA report](QA_REPORT.md) · [Physical device checklist](DEVICE_VALIDATION.md).
 
 ## Use
 
@@ -77,3 +81,8 @@ match. Live-camera AR should remain gated on physical-device and visual validati
 Earlier UX evidence: [POC 0.36 QA report](QA-REPORT.md).
 
 See [the POC 0.4 audit matrix and device limits](docs/POC-0.4-AUDIT.md) for deployed-site QA evidence and the remaining physical iPhone acceptance checks.
+
+The stable runtime is identical to tested commit `e49c627d1803dbaa8a15c734a66f1973b782841d`.
+[Completed verification](https://github.com/Topcod80/gastrona-table-styler/actions/runs/33547901324) passed pre-deployment tests, deployed-file byte comparison and public-site WebKit tests, including all 63 extended audit checks. The freeze adds documentation and release metadata only. Keep the tag fixed; future development belongs on its separate branch.
+
+Additional regression suites: `tests/audit.cjs` covers storage/graphics failures, clean console, mobile reachability, privacy and three-minute stress; `tests/frame-health.cjs` checks slow-frame fallback; `tests/models.cjs` checks geometry, thickness, normals and materials.

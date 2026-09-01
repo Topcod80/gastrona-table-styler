@@ -1,0 +1,55 @@
+name: Freeze POC 0.4 stable release
+on:
+  push:
+    branches: [main]
+    paths: [RELEASE_NOTES_v0.4.md]
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: freeze-v0.4-stable
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TESTED_SHA: e49c627d1803dbaa8a15c734a66f1973b782841d
+      TESTED_RUN: '33547901324'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify tested runtime is unchanged
+        run: |
+          gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${TESTED_RUN}" > /tmp/verified-run.json
+          git diff --name-only "$TESTED_SHA" "$GITHUB_SHA" > /tmp/freeze-files.txt
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          run = json.loads(Path('/tmp/verified-run.json').read_text())
+          assert run['head_sha'] == os.environ['TESTED_SHA']
+          assert run['status'] == 'completed' and run['conclusion'] == 'success'
+          allowed = {'README.md', 'CHANGELOG.md', 'ARCHITECTURE.md', 'QA_REPORT.md', 'DEVICE_VALIDATION.md', 'RELEASE_NOTES_v0.4.md', '.github/workflows/release-stable.yml'}
+          changed = set(Path('/tmp/freeze-files.txt').read_text().splitlines())
+          assert changed <= allowed, f'Unexpected runtime changes: {changed - allowed}'
+          for name in allowed - {'.github/workflows/release-stable.yml'}:
+              assert Path(name).is_file() and Path(name).stat().st_size > 0
+          print('Verified successful live QA and identical application runtime.')
+          PY
+      - name: Create fixed tag and publish release
+        run: |
+          if git rev-parse --verify refs/tags/v0.4-stable >/dev/null 2>&1; then
+            test "$(git rev-parse 'refs/tags/v0.4-stable^{commit}')" = "$GITHUB_SHA"
+          else
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git tag -a v0.4-stable "$GITHUB_SHA" -m 'POC 0.4 Stable: audited photo-based prototype baseline'
+            git push origin refs/tags/v0.4-stable
+          fi
+          if gh release view v0.4-stable >/dev/null 2>&1; then
+            gh release view v0.4-stable --json url,name,tagName
+          else
+            gh release create v0.4-stable --verify-tag --title 'POC 0.4 Stable' --notes-file RELEASE_NOTES_v0.4.md --latest
+          fi

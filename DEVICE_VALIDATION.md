@@ -1,19 +1,32 @@
-# POC 0.35 — physical iPhone validation gate
+# POC 0.4 Stable — physical iPhone validation
 
-Status: **NOT RUN — no physical iPhone is connected to this environment.**
-Do not treat automated WebKit results as real iPhone validation.
+Status: **NOT RUN. No physical iPhone was connected to the QA environment.** Automated WebKit passes in [QA_REPORT.md](QA_REPORT.md) do not establish physical Safari or Apple GPU behavior.
 
-Record device model, iOS/Safari version, orientation, date and outcome for each check. Use personal table photos only on the device; no uploads or screenshots containing them are required.
+Baseline: `v0.4-stable` / **POC 0.4 Stable**.
+Live: https://topcod80.github.io/gastrona-table-styler/.
 
-| Check | Procedure | Pass condition | Physical result |
+Record device model, iOS/Safari version, date, battery/Low Power Mode, orientation, renderer mode and result. Keep personal table photos on the device; sharing them is unnecessary.
+
+| ID | Physical procedure | Acceptance | Result |
 |---|---|---|---|
-| Camera | Take photo, use rear camera, accept, cancel and retry | Correct orientation; cancelled capture keeps scene; calibration becomes available | Not run |
-| HEIC | Choose an original HEIC from Photos/Files; save and reload | Decodes with correct orientation and restores, or clearly reports unsupported format without losing scene | Not run |
-| Corners | Grab every handle off-center, drag near screen edges, release, cancel and redo | No jump; loupe and crosshair usable; corners remain reachable | Not run |
-| Touch | Select a setting, drag, two-finger pinch/twist, release one finger, continue dragging | No stuck pointers or page scroll; relative geometry stays together | Not run |
-| Browser bars | Collapse/expand Safari bars; rotate device during editing | Canvas and toolbar remain visible and interactive; no cropped controls | Not run |
-| Fit | Narrow, wide and steeply angled table photos, each at 2/4/6 guests | Circular default plates; all piece envelopes stay on surface; fit remains readable | Not run |
-| Persistence | Save, reload, close/reopen Safari, return later | Photo + calibration + geometry return; storage failure is explicit | Not run |
-| Recovery | Undo fit, reset calibration, replace photo, undo, switch collections | Expected scene and photo restored; collections do not move settings | Not run |
+| D01 | Rear-camera permission, shutter, cancel, retake and return | Correct local photo orientation; cancellation retains scene | Not run |
+| D02 | Genuine HEIC/HEIF, EXIF rotation, iCloud Photos and Live Photo exports | Correct decode/restore or clear unsupported message retaining scene | Not run |
+| D03 | Large original camera images and repeated replacements | No tab termination; usable editing; old URLs released | Not run |
+| D04 | All calibration handles, off-center grabs, screen edges, cancel/reset/Done | No jumps/trapped controls; usable loupe and corner targets | Not run |
+| D05 | Real simultaneous drag/pinch/twist; one-finger release/continuation; interruption | No stuck pointers, page scroll or unwanted zoom; group geometry preserved | Not run |
+| D06 | Narrow/wide/steep real tables, 2/4/6 guests, enlarge/move then Fit | Ground footprints fit; no severe unintended overlap; realistic seat orientation | Not run |
+| D07 | Item picker/whole setting; scale/rotate/duplicate/delete/Undo/front | Scope clear; unrelated settings unchanged | Not run |
+| D08 | Arrange/Collections/Save, inline and expanded | Categories discoverable; layout retained; save status understood | Not run |
+| D09 | Browser bars, notch/home indicator, rotation, app switching, form focus | Visible tabletop/reachable toolbar; no clipped controls or surprise zoom | Not run |
+| D10 | Six guests for 10–15 minutes; normal/Low Power Mode | Record Apple GPU FPS, responsiveness, heat/battery; no unbounded degradation | Not run |
+| D11 | Backgrounding/memory pressure; retry 3D after fallback | Editable scene retained; explicit fallback; no stuck benchmark | Not run |
+| D12 | Save/reload/force-quit/relaunch; private mode/low disk/later revisit | Last explicit full save returns or a clear storage failure appears | Not run |
+| D13 | Delete saved, clear site data, reload | Expected empty save; unsaved scene not presented as durable | Not run |
+| D14 | VoiceOver, Dynamic Type/text zoom, external keyboard | Understandable labels/selection and reachable actions | Not run |
+| D15 | Varied real photos/lighting | Plausible contact, glass height/translucency, plate shape and camera match | Not run |
 
-Release gate for considering live AR: all device interaction checks pass, six-guest layouts remain usable on real photos, and the shape-preserving illustration is acceptable to test users. This prototype does not estimate physical dimensions, glass height, occlusion or camera pose.
+## Acceptance boundary
+
+Resolve core-flow/data-loss blockers, validate novice comprehension and approve real-photo appearance before an AR feasibility decision. Models have real height, but four-corner matching does not recover absolute dimensions, photographic lighting, real occlusion or unique camera intrinsics. Glass does not refract the photo.
+
+Passing this checklist does not validate tracking/occlusion absent from this release. Do not move the stable tag for later fixes: issue a new version and preserve this baseline.
