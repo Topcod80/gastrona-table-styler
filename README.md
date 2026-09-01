@@ -75,3 +75,5 @@ already present in the photo. Extreme calibration or unknown lenses can distort 
 match. Live-camera AR should remain gated on physical-device and visual validation.
 
 Earlier UX evidence: [POC 0.36 QA report](QA-REPORT.md).
+
+See [the POC 0.4 audit matrix and device limits](docs/POC-0.4-AUDIT.md) for deployed-site QA evidence and the remaining physical iPhone acceptance checks.

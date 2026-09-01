@@ -1,8 +1,11 @@
-name: Deployed POC 0.4 audit baseline
+name: Audit deployed Table Studio
 on:
-  push:
-    paths: ['tests/audit.cjs', '.github/workflows/audit.yml']
   workflow_dispatch:
+    inputs:
+      record_baseline:
+        description: Record failed checks without failing the audit
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
@@ -12,7 +15,7 @@ jobs:
     env:
       LIBGL_ALWAYS_SOFTWARE: '1'
       BASE_URL: https://topcod80.github.io/gastrona-table-styler/
-      AUDIT_BASELINE: '1'
+      AUDIT_BASELINE: ${{ inputs.record_baseline && '1' || '0' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
