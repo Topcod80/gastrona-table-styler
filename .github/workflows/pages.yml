@@ -1,0 +1,75 @@
+name: Test and deploy Table Studio
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --ignore-scripts
+      - run: npx playwright install --with-deps webkit
+      - run: npm run test:logic
+      - name: Mobile WebKit interaction tests
+        run: |
+          python3 -m http.server 8000 --bind 127.0.0.1 > /tmp/table-studio-http.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl --silent --fail http://127.0.0.1:8000/ > /dev/null; then break; fi
+            sleep 1
+          done
+          npm test
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: webkit-mobile-preview
+          path: test-results/
+          if-no-files-found: ignore
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: test
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Stage application files only
+        run: |
+          mkdir _site
+          cp index.html style.css app.js _site/
+          touch _site/.nojekyll
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
+      - name: Verify deployed files match this commit
+        env:
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          for file in index.html style.css app.js; do
+            curl --fail --retry 8 --retry-delay 5 --retry-all-errors "${PAGE_URL}${file}?commit=${GITHUB_SHA}" -o "/tmp/deployed-${file}"
+            cmp "${file}" "/tmp/deployed-${file}"
+          done
