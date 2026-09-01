@@ -102,7 +102,7 @@ let pw;try{pw=require('playwright')}catch{pw=require(process.env.CODEX_PRIMARY_R
   assert.equal(await page.locator('.piece.selected').count(),4);
   const mappedGesture=await page.evaluate(()=>{
    const before=structuredClone(members()),r=stage.getBoundingClientRect(),target=document.querySelector('.piece.selected'),h=TablePerspective.matrix(calibration),old=stage.setPointerCapture;stage.setPointerCapture=()=>{};
-   const emit=(type,id,p,node=stage)=>{const v=TablePerspective.project(h,p);node.dispatchEvent(new PointerEvent(type,{bubbles:true,cancelable:true,pointerId:id,pointerType:'touch',clientX:r.left+v.x*r.width,clientY:r.top+v.y*r.height}));};
+   const emit=(type,id,p,node=stage)=>{const v=TablePerspective.project(h,p);node.dispatchEvent(new PointerEvent(type,{bubbles:true,cancelable:true,pointerId:id,pointerType:'touch',clientX:r.left+v.x*stage.clientWidth,clientY:r.top+v.y*stage.clientHeight}));};
    const p=before[0];emit('pointerdown',1,p,target);emit('pointermove',1,{x:p.x+.03,y:p.y-.04});emit('pointerup',1,{x:p.x+.03,y:p.y-.04});
    const dragged=structuredClone(members());
    emit('pointerdown',2,{x:p.x,y:p.y},target);emit('pointerdown',3,{x:p.x+.08,y:p.y});emit('pointermove',3,{x:p.x+.09,y:p.y+.04});emit('pointerup',3,p);emit('pointerup',2,p);stage.setPointerCapture=old;

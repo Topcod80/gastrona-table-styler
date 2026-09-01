@@ -216,6 +216,7 @@ function setCalibration(next){
 }
 function updatePlane(){
  const q=activeCalibration(),layer=$('items');
+ layer.style.width=q?stage.clientWidth+'px':'100%';
  layer.style.height=q?stage.clientWidth/TablePerspective.ratio+'px':'100%';
  layer.style.transform=q?TablePerspective.css(TablePerspective.matrix(q),stage.clientWidth,stage.clientHeight):'none';
  $('calibrate').textContent=calibration?'Adjust table':'Calibrate table';
@@ -229,10 +230,10 @@ function updatePlane(){
 function startCalibration(){
  if(!photoBlob)return;enterFocus();calibrating=true;selected=null;pointers.clear();gesture=null;pan=null;
  calibrationDraft=calibration?structuredClone(calibration):[{x:.08,y:.88},{x:.92,y:.88},{x:.75,y:.22},{x:.25,y:.22}];
- document.body.classList.add('calibrating');$('calibration-overlay').hidden=false;$('calibration-tools').hidden=false;
+ $('done').textContent='Cancel';document.body.classList.add('calibrating');$('calibration-overlay').hidden=false;$('calibration-tools').hidden=false;
  viewZoom=.86;$('zoom').disabled=true;render();requestAnimationFrame(()=>{fitStage();canvasWindow.scrollLeft=0;canvasWindow.scrollTop=0;});paint();
 }
-function cancelCalibration(){calibrating=false;cornerDrag=null;document.body.classList.remove('calibrating');$('calibration-overlay').hidden=true;$('calibration-tools').hidden=true;$('zoom').disabled=false;viewZoom=1;$('zoom').textContent='Zoom 1×';fitStage();render();}
+function cancelCalibration(){$('done').textContent='Done';calibrating=false;cornerDrag=null;document.body.classList.remove('calibrating');$('calibration-overlay').hidden=true;$('calibration-tools').hidden=true;$('zoom').disabled=false;viewZoom=1;$('zoom').textContent='Zoom 1×';fitStage();render();}
 $('calibrate').addEventListener('click',startCalibration);
 $('calibration-done').addEventListener('click',()=>{if(!TablePerspective.valid(calibrationDraft))return;checkpoint();setCalibration(structuredClone(calibrationDraft));cancelCalibration();render();announce('Table calibrated. Settings follow this surface. Save to keep your calibration.');});
 $('calibration-reset').addEventListener('click',()=>{checkpoint();setCalibration(null);cancelCalibration();render();announce('Calibration removed. Flat editing restored. Undo brings it back.');});
