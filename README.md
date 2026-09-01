@@ -26,11 +26,11 @@ Place Setting is the default selection mode. A grouped plate selects its plate, 
 
 ## Local photo persistence
 
-Save writes one **atomic IndexedDB record containing both scene and photo Blob**. Reload automatically restores that saved record, including the photo. Restore also works manually; Undo reverses manual restoration including its photo. No autosave: press Save to keep later edits. Reset clears pieces but keeps the current photo and existing saved record. Delete saved removes the stored scene/photo while retaining the current on-screen scene.
+Save writes one **atomic IndexedDB record containing both scene and original photo bytes**. Reload automatically restores that saved record, including the photo. Restore also works manually; Undo reverses manual restoration including its photo. No autosave: press Save to keep later edits. Reset clears pieces but keeps the current photo and existing saved record. Delete saved removes the stored scene/photo while retaining the current on-screen scene.
 
 Missing photo blobs, failed decode, invalid scenes, blocked storage and quota errors produce a visible status. A failed restore does not silently show objects without their missing saved photo. An intentionally photo-free save explicitly says so when restored. A legacy POC 0.2 metadata save has no recoverable photo; the UI asks for a new photo/save rather than pretending it restored one.
 
-Photo selection remains temporary until Save. The original selected image Blob, including any embedded metadata, stays in IndexedDB on this browser only. Nothing is uploaded. Safari/private mode/site-data cleanup can block or remove local storage; a local save is not a durable backup. Images over 40 MB are rejected. CSP blocks application connections and form submissions; static website requests still reach GitHub Pages.
+Photo selection remains temporary until Save. The original selected image bytes, including any embedded metadata, stays in IndexedDB on this browser only. Nothing is uploaded. Safari/private mode/site-data cleanup can block or remove local storage; a local save is not a durable backup. Images over 40 MB are rejected. CSP blocks application connections and form submissions; static website requests still reach GitHub Pages.
 
 ## Tests and deployment
 
