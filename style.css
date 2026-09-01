@@ -92,3 +92,13 @@ body.editing .editor-quickbar{padding:4px 8px;background:var(--paper)}
 .render-choice{display:flex;align-items:center;gap:8px;padding:3px 6px}.render-choice button{min-height:32px;font-size:11px;padding:4px 8px}.render-choice span{font-size:10px;line-height:1.25;flex:1}
 #performance{font-size:12px;margin:8px 0}#performance summary{padding:8px;cursor:pointer}#perf-output{font-size:11px;line-height:1.5}#table-3d[hidden]{display:none}
 @media(max-height:500px){.render-choice{padding:0 4px}.render-choice button{min-height:28px}}
+
+/* Audit: finger-sized controls and no iOS form-focus zoom. Short screens keep
+   the table visible while secondary controls scroll within their own panel. */
+.workspace #inspector button,.workspace .editor-quickbar button,.workspace #item-picker button,.workspace #control-spacing button,.workspace #surface-view{min-height:44px}
+.workspace .editor-quickbar select{font-size:16px;min-height:44px;width:88px}
+select:focus-visible,summary:focus-visible{outline:3px solid #ac853e;outline-offset:3px}
+#performance summary{min-height:44px}
+body.editing .workspace #canvas-window{min-height:80px}
+body.editing #inspector{max-height:calc(var(--visible-height,100dvh) - 200px);overflow-y:auto;overscroll-behavior:contain}
+@media(max-height:500px) and (orientation:landscape){body.editing #inspector{max-height:none;padding-right:max(10px,env(safe-area-inset-right));padding-bottom:50px}body.editing #edit-status{pointer-events:none}}

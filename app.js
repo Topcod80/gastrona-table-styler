@@ -14,7 +14,7 @@ let lastSavedScene=null,lastSavedPhoto=null,lastSavedAt=null,saveError=false;
 let panel='arrange',surfaceView=true,calibrationWasFocused=false;
 let activeTool='size',sliderBase=null,sliderKey=null,busy=false;
 const workspace=document.querySelector('.workspace'), canvasWindow=$('canvas-window');
-let pointers = new Map(), gesture = null;
+let pointers = new Map(), gesture = null, gestureCheckpoint = false;
 const stage = $('stage');
 const clamp = (v,a,b) => Math.max(a,Math.min(b,v));
 const angle = v => ((v+180)%360+360)%360-180;
@@ -71,7 +71,7 @@ stage.addEventListener('pointerdown',e=>{
   if(calibrating)return;if(e.pointerType==='mouse'&&e.button!==0)return;let target=e.target.closest('.piece');if(is3D()){const r=stage.getBoundingClientRect(),hit=renderer3D.pick((e.clientX-r.left)/stage.clientWidth,(e.clientY-r.top)/stage.clientHeight);if(hit)target=$('items').querySelector(`[data-id="${hit}"]`);}
   if(!pointers.size){selected=target?Number(target.dataset.id):null;paint();
     if(!current()){if(!focused)return;pan={id:e.pointerId,x:e.clientX,y:e.clientY,left:canvasWindow.scrollLeft,top:canvasWindow.scrollTop};stage.setPointerCapture(e.pointerId);return;}
-    sliderBase=null;checkpoint();
+    sliderBase=null;gestureCheckpoint=false;
   }
   if(pointers.size>=2)return;e.preventDefault();stage.focus({preventScroll:true});stage.setPointerCapture(e.pointerId);pointers.set(e.pointerId,point(e));baseline();
 });
@@ -86,6 +86,8 @@ stage.addEventListener('pointermove',e=>{
     const offset=TableGeometry.rotate((gesture.pivot.x*gesture.width-a.x)*factor,(gesture.pivot.y*gesture.height-a.y)*factor,rotation);
     dx=(c.x+offset.x)/gesture.width-gesture.pivot.x;dy=(c.y+offset.y)/gesture.height-gesture.pivot.y;
   }
+  if(Math.abs(dx)+Math.abs(dy)+Math.abs(factor-1)+Math.abs(rotation)<1e-7)return;
+  if(!gestureCheckpoint){checkpoint();gestureCheckpoint=true;}
   applyTransform(gesture,{dx,dy,factor,rotation});
 });
 function endPointer(e){if(pan?.id===e.pointerId)pan=null;if(!pointers.has(e.pointerId))return;pointers.delete(e.pointerId);baseline();}

@@ -69,7 +69,7 @@ jobs:
           cp index.html style.css assets.js geometry.js perspective.js camera.js view3d.js fit.js storage.js app.js _site/
           cp -r dist _site/
           mkdir _site/validation
-          cp qa-preview/comparison-2d.png qa-preview/comparison-3d.png qa-preview/performance-3d.json _site/validation/
+          cp qa-preview/comparison-2d.png qa-preview/comparison-3d.png qa-preview/performance-3d.json qa-preview/audit.json qa-preview/audit-3d.png _site/validation/
           touch _site/.nojekyll
       - uses: actions/configure-pages@v5
         with:

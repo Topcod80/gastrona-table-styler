@@ -1,6 +1,7 @@
 import * as T from 'three';
 import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
 import {makeGeometries,makeMaterials} from './models3d.js';
+import {createFrameHealth} from './frame-health.js';
 export function create({canvas,onFailure,onFrame}){
  const renderer=new T.WebGLRenderer({canvas,alpha:true,antialias:true,powerPreference:'low-power',preserveDrawingBuffer:false});
  renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.5));renderer.setClearColor(0,0);renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;
@@ -12,7 +13,8 @@ export function create({canvas,onFailure,onFrame}){
  const floorGeo=new T.PlaneGeometry(1,1),floorMat=new T.ShadowMaterial({opacity:.15}),floor=new T.Mesh(floorGeo,floorMat);floor.rotation.x=-Math.PI/2;floor.receiveShadow=true;scene.add(floor);
  const shadowCanvas=document.createElement('canvas');shadowCanvas.width=shadowCanvas.height=64;const sc=shadowCanvas.getContext('2d'),gradient=sc.createRadialGradient(32,32,2,32,32,32);gradient.addColorStop(0,'rgba(30,24,15,.25)');gradient.addColorStop(.5,'rgba(30,24,15,.12)');gradient.addColorStop(1,'rgba(30,24,15,0)');sc.fillStyle=gradient;sc.fillRect(0,0,64,64);
  const shadowTexture=new T.CanvasTexture(shadowCanvas),contactMat=new T.MeshBasicMaterial({map:shadowTexture,transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1});
- let latest=null,queued=0,disposed=false,active=true,width=0,height=0,quality='standard',frames=0,cpu=[],intervals=[],lastTime=0,benchmarkEnd=0,benchmarkResolve=null,slowWindows=0,shaderFailed=false;
+ let latest=null,queued=0,disposed=false,active=true,width=0,height=0,quality='standard',frames=0,cpu=[],lastTime=0,lastFinished=0,continuous=false,benchmarkEnd=0,benchmarkResolve=null,shaderFailed=false;
+ const health=createFrameHealth();
  renderer.debug.onShaderError=()=>{shaderFailed=true;};
  const raycaster=new T.Raycaster(),vec=new T.Vector3();
  const onLost=e=>{e.preventDefault();fail('3D graphics paused. Your table is safe in 2D.');};canvas.addEventListener('webglcontextlost',onLost);
@@ -39,22 +41,25 @@ export function create({canvas,onFailure,onFrame}){
   for(const [id,n] of nodes)if(!keep.has(id)){n.body.removeFromParent();nodes.delete(id);}for(const [id,r]of roots)if(!groupKeep.has(id)){r.removeFromParent();roots.delete(id);}
   scene.updateMatrixWorld(true);request();
  }
- function request(){if(!queued&&active&&!disposed&&!document.hidden)queued=requestAnimationFrame(draw);}
+ function request(){if(!queued&&active&&!disposed&&!document.hidden){continuous=!!lastTime&&(!!benchmarkEnd||performance.now()-lastFinished<100);queued=requestAnimationFrame(draw);}}
  function draw(time){queued=0;if(!active||disposed||document.hidden)return;const start=performance.now();try{renderer.render(scene,camera);if(shaderFailed)throw Error('shader');}catch{fail('3D could not render here. Showing your table in 2D.');return;}
-  frames++;cpu.push(performance.now()-start);if(cpu.length>180)cpu.shift();
-  if(lastTime&&time-lastTime<250)intervals.push(time-lastTime);lastTime=time;if(intervals.length>180)intervals.shift();
-  onFrame?.();
-  if(intervals.length>=90){const recent=intervals.slice(-90),avg=recent.reduce((a,b)=>a+b,0)/recent.length;if(avg>50){if(quality==='standard'){quality='reduced';renderer.setPixelRatio(1);renderer.shadowMap.enabled=false;intervals=[];cpu=[];}else if(++slowWindows>=2){fail('3D is slow on this device. Switched to smooth 2D editing.');return;}}else slowWindows=0;}
-  if(benchmarkEnd>time)request();else if(benchmarkResolve){const done=benchmarkResolve;benchmarkResolve=null;benchmarkEnd=0;done(stats());}
+  frames++;
+  const action=continuous&&lastTime?health.sample(time-lastTime):null;lastTime=time;
+  onFrame?.();cpu.push(performance.now()-start);if(cpu.length>180)cpu.shift();lastFinished=performance.now();
+  if(action==='reduce'){quality='reduced';renderer.setPixelRatio(1);renderer.shadowMap.enabled=false;}
+  if(action==='fallback'){fail('3D is slow on this device. Switched to smooth 2D editing.');return;}
+  if(benchmarkEnd>time)request();else settleBenchmark('complete');
  }
+ function settleBenchmark(status){if(!benchmarkResolve)return;const done=benchmarkResolve;benchmarkResolve=null;benchmarkEnd=0;done({...stats(),status});}
+
  function resize(w,h){if(!w||!h||disposed)return;if(w!==width||h!==height){width=w;height=h;renderer.setSize(w,h,false);}request();}
  function bounds(id){const n=nodes.get(id);if(!n)return null;const b=n.mesh.geometry.boundingBox,min={x:Infinity,y:Infinity},max={x:-Infinity,y:-Infinity};for(const x of [b.min.x,b.max.x])for(const y of [b.min.y,b.max.y])for(const z of [b.min.z,b.max.z]){vec.set(x,y,z).applyMatrix4(n.mesh.matrixWorld).project(camera);const u=(vec.x+1)*width/2,v=(1-vec.y)*height/2;min.x=Math.min(min.x,u);min.y=Math.min(min.y,v);max.x=Math.max(max.x,u);max.y=Math.max(max.y,v);}return {x:min.x,y:min.y,width:Math.max(4,max.x-min.x),height:Math.max(4,max.y-min.y)};}
  function pick(x,y){raycaster.setFromCamera({x:x*2-1,y:1-y*2},camera);return raycaster.intersectObjects([...nodes.values()].map(n=>n.mesh),false)[0]?.object.userData.itemId??null;}
  function stats(){const mean=xs=>xs.length?xs.reduce((a,b)=>a+b,0)/xs.length:0;let geometryBytes=0;for(const g of Object.values(geometries)){for(const a of Object.values(g.attributes))geometryBytes+=a.array.byteLength;geometryBytes+=g.index?.array.byteLength||0;}
-  const pixels=canvas.width*canvas.height;return {technology:'Three.js r185 / WebGL2',quality,frames,measuredFrames:intervals.length,fps:intervals.length?+(1000/mean(intervals)).toFixed(1):null,cpuFrameMs:+mean(cpu).toFixed(2),drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles,geometries:renderer.info.memory.geometries,textures:renderer.info.memory.textures,geometryBytes,estimatedGraphicsBytes:geometryBytes+pixels*12+512*512*4+256*256*8,jsHeapBytes:performance.memory?.usedJSHeapSize??null,items:nodes.size,groups:roots.size,assets:Object.fromEntries(Object.entries(geometries).map(([k,g])=>[k,{triangles:(g.index?.count||g.attributes.position.count)/3,vertices:g.attributes.position.count}]))};}
- function benchmark(){intervals=[];cpu=[];lastTime=0;benchmarkEnd=performance.now()+3000;return new Promise(resolve=>{benchmarkResolve=resolve;request();});}
- function suspend(value){active=!value;if(value){cancelAnimationFrame(queued);queued=0;lastTime=0;}else if(latest)sync(latest);}
- function visibility(){if(document.hidden){cancelAnimationFrame(queued);queued=0;lastTime=0;}else request();}document.addEventListener('visibilitychange',visibility);
- function dispose(){if(disposed)return;disposed=true;cancelAnimationFrame(queued);canvas.removeEventListener('webglcontextlost',onLost);document.removeEventListener('visibilitychange',visibility);for(const g of Object.values(geometries))g.dispose();for(const group of Object.values(materials))for(const m of Object.values(group))m.dispose();floorGeo.dispose();floorMat.dispose();contactMat.dispose();shadowTexture.dispose();env.dispose();light.shadow.dispose();renderer.dispose();if(benchmarkResolve)benchmarkResolve(stats());}
+  const pixels=canvas.width*canvas.height;return {technology:'Three.js r185 / WebGL2',...health.stats(),quality,frames,cpuFrameMs:+mean(cpu).toFixed(2),drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles,geometries:renderer.info.memory.geometries,textures:renderer.info.memory.textures,materials:Object.values(materials).reduce((n,g)=>n+Object.keys(g).length,2),programs:renderer.info.programs?.length??null,pixelRatio:renderer.getPixelRatio(),geometryBytes,estimatedGraphicsBytes:geometryBytes+pixels*12+512*512*4+256*256*8,jsHeapBytes:performance.memory?.usedJSHeapSize??null,items:nodes.size,groups:roots.size,assets:Object.fromEntries(Object.entries(geometries).map(([k,g])=>[k,{triangles:(g.index?.count||g.attributes.position.count)/3,vertices:g.attributes.position.count}]))};}
+ function benchmark(){settleBenchmark('cancelled');if(disposed||!active||document.hidden)return Promise.resolve({...stats(),status:'cancelled'});health.reset();cpu=[];lastTime=0;benchmarkEnd=performance.now()+3000;return new Promise(resolve=>{benchmarkResolve=resolve;request();});}
+ function suspend(value){if(disposed||active===!value)return;active=!value;if(value){cancelAnimationFrame(queued);queued=0;lastTime=0;settleBenchmark('cancelled');}else request();}
+ function visibility(){if(document.hidden){cancelAnimationFrame(queued);queued=0;lastTime=0;settleBenchmark('cancelled');}else request();}document.addEventListener('visibilitychange',visibility);
+ function dispose(){if(disposed)return;settleBenchmark('cancelled');disposed=true;cancelAnimationFrame(queued);canvas.removeEventListener('webglcontextlost',onLost);document.removeEventListener('visibilitychange',visibility);for(const g of Object.values(geometries))g.dispose();for(const group of Object.values(materials))for(const m of Object.values(group))m.dispose();floorGeo.dispose();floorMat.dispose();contactMat.dispose();shadowTexture.dispose();env.dispose();light.shadow.dispose();renderer.dispose();}
  return {sync,resize,bounds,pick,stats,benchmark,suspend,dispose};
 }

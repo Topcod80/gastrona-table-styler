@@ -4,9 +4,9 @@
   "private": true,
   "scripts": {
     "start": "python3 -m http.server 8000",
-    "test": "node tests/interaction.cjs && node tests/live-qa.cjs && node tests/three.cjs",
-    "test:logic": "node tests/logic.cjs",
-    "test:live": "node tests/live-qa.cjs && node tests/three.cjs",
+    "test": "node tests/interaction.cjs && node tests/live-qa.cjs && node tests/three.cjs && node tests/audit.cjs",
+    "test:logic": "node tests/logic.cjs && node tests/frame-health.cjs",
+    "test:live": "node tests/live-qa.cjs && node tests/three.cjs && node tests/audit.cjs",
     "build": "node scripts/build.cjs"
   },
   "devDependencies": {
