@@ -50,3 +50,19 @@ for(const [name,quad] of Object.entries(fixtures))for(const n of [2,4,6]){
 }
 const ctx=F.context(q,1.5);assert.ok(F.pose({x:.5,y:.2,rotation:0},ctx).scale<F.pose({x:.5,y:.8,rotation:0},ctx).scale);
 console.log('PASS: adaptive quad proportions, uniform artwork scaling, narrow/wide/strong-angle 2/4/6 footprint containment, large-group recovery, proportional fitting, idempotence.');
+// QA reproduction: an enlarged setting can be inside the table yet overlap peers.
+for(const [name,quad] of Object.entries(fixtures))for(const n of [2,4,6]){
+ const ctx=F.context(quad,1.5),seats=G.layout(n,ctx.ratio);let id=0;
+ const groups=seats.map((s,i)=>({id:'g'+(i+1),scale:s.scale,rotation:s.rotation}));
+ const items=seats.flatMap((s,i)=>s.items.map(p=>({...p,id:++id,groupId:groups[i].id})));
+ const large=G.transform(items.slice(0,4),items[0],ctx.ratio,{factor:3}).items;
+ const baseline=[...large,...items.slice(4)];groups[0].scale*=3;
+ const fixed=F.arrange(baseline,groups,ctx,n);assert.ok(fixed.ok,name+' fit packing');assert.ok(fixed.changed>0);assert.ok(F.inside(fixed.items,ctx));
+ for(let a=0;a<n;a++)for(let b=a+1;b<n;b++)assert.equal(F.overlaps(fixed.items.filter(i=>i.groupId===groups[a].id),fixed.items.filter(i=>i.groupId===groups[b].id),ctx),false,name+' no overlap');
+ assert.equal(F.arrange(fixed.items,fixed.groups,ctx,n).changed,0,'No-op is identified');
+}
+for(const r of [.6,1,1.5,2.5])for(const n of [2,4,6]){
+ const seats=G.layout(n,r);for(const s of seats){const p=s.items[0];assert.ok(Math.min(p.x,1-p.x,p.y/r,(1-p.y)/r)<.16,'Plate sits near seat edge');}
+}
+const ground=P.pose(ctx.h,{x:.5,y:.5,rotation:0},ctx.ratio,1.5);assert.ok(ground.flatness>=.66&&ground.flatness<1);assert.ok(Number.isFinite(ground.surfaceAngle));
+console.log('PASS QA: in-bounds oversized overlap repaired; proportional packing; seat-edge placement; bounded surface flattening.');

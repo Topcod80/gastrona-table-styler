@@ -13,9 +13,19 @@ const TableGeometry = (() => {
   function rotate(x,y,degrees){const r=degrees*Math.PI/180;return {x:x*Math.cos(r)-y*Math.sin(r),y:x*Math.sin(r)+y*Math.cos(r)};}
   function layout(count,ratio,spacing='standard'){
     const template=templates[count];if(!template||!Number.isFinite(ratio)||ratio<=0)throw Error('Invalid layout');
-    const scale=Math.max(.08,Math.min(template.scale,.8/ratio));
-    return template.seats.map(([x,y,rotation])=>{
-      if(ratio<1){[x,y]=[y,1-x];rotation=angle(rotation-90);}
+    const short=Math.min(1,1/ratio),scale=Math.max(.08,Math.min(template.scale,short*.27/.24));
+    // A plate sits just inside its seat edge; inward glass offsets stay attached.
+    const inset=.12*scale+.035*short;
+    let seats=count===2?[[.5,inset*ratio,180],[.5,1-inset*ratio,0]]:
+      count===4?[[.27,inset*ratio,180],[.73,inset*ratio,180],[.27,1-inset*ratio,0],[.73,1-inset*ratio,0]]:
+      [[.3,inset*ratio,180],[.7,inset*ratio,180],[.3,1-inset*ratio,0],[.7,1-inset*ratio,0],[inset,.5,90],[1-inset,.5,-90]];
+    if(ratio<1){
+      const edge=inset;
+      seats=count===2?[[edge,.5,90],[1-edge,.5,-90]]:
+       count===4?[[edge,.27,90],[edge,.73,90],[1-edge,.27,-90],[1-edge,.73,-90]]:
+       [[edge,.3,90],[edge,.7,90],[1-edge,.3,-90],[1-edge,.7,-90],[.5,edge*ratio,180],[.5,1-edge*ratio,0]];
+    }
+    return seats.map(([x,y,rotation])=>{
       return {scale,rotation,spacing,items:Object.entries(offsets).map(([type,[dx,dy]])=>{
         const p=rotate(dx*scale*spacingFactors[spacing],dy*scale*spacingFactors[spacing],rotation);
         return {type,x:x+p.x,y:y+p.y*ratio,scale,rotation,tilt:1};

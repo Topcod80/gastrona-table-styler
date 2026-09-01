@@ -36,6 +36,41 @@ const TableFit=(()=>{
   }
   return {items:list.map(i=>({...i})),factor:1,ok:false};
  }
- return {sizes,context,pose,footprint,bounds,inside,fit};
+ function polygonsOverlap(a,b){
+  for(const shape of [a,b])for(let i=0;i<shape.length;i++){
+   const p=shape[i],q=shape[(i+1)%shape.length],axis={x:p.y-q.y,y:q.x-p.x};
+   const aa=a.map(v=>v.x*axis.x+v.y*axis.y),bb=b.map(v=>v.x*axis.x+v.y*axis.y);
+   if(Math.max(...aa)<=Math.min(...bb)+1e-8||Math.max(...bb)<=Math.min(...aa)+1e-8)return false;
+  }
+  return true;
+ }
+ function overlaps(a,b,ctx){return a.some(i=>b.some(j=>polygonsOverlap(footprint(i,ctx),footprint(j,ctx))));}
+ function arrange(items,groups,ctx,count){
+  const G=typeof module!=='undefined'?require('./geometry.js'):TableGeometry;
+  const seats=G.layout([2,4,6].includes(count)?count:6,ctx.ratio),cap=seats[0].scale*1.05;
+  const batches=new Map(),placed=[],result=new Map(),factors=new Map();
+  for(const i of items){const key=i.groupId||'item-'+i.id;if(!batches.has(key))batches.set(key,[]);batches.get(key).push(i);}
+  for(const [key,list] of batches){
+   const center=G.pivot(list),group=groups.find(g=>g.id===key),initial=Math.min(1,cap/(group?.scale||list[0].scale));
+   const minimum=Math.max(...list.map(i=>.08/i.scale));let accepted=initial>=1-1e-9&&inside(list,ctx)&&!placed.some(other=>overlaps(list,other,ctx))?{items:list.map(i=>({...i})),factor:1}:null;
+   const candidates=[center,...seats.map(s=>G.pivot(s.items))];
+   for(let x=.12;x<.95;x+=.14)for(let y=.12;y<.95;y+=.14)candidates.push({x,y});
+   candidates.sort((a,b)=>Math.hypot(a.x-center.x,(a.y-center.y)/ctx.ratio)-Math.hypot(b.x-center.x,(b.y-center.y)/ctx.ratio));
+   for(let step=0;step<32&&!accepted;step++){
+    const factor=Math.max(minimum,initial*Math.pow(.94,step));
+    for(const target of candidates){
+     const trial=list.map(i=>({...i,x:target.x+(i.x-center.x)*factor,y:target.y+(i.y-center.y)*factor,scale:i.scale*factor}));
+     const fitted=fit(trial,ctx);
+     if(fitted.ok&&!placed.some(other=>overlaps(fitted.items,other,ctx))){accepted={items:fitted.items,factor:factor*fitted.factor};break;}
+    }
+    if(factor===minimum)break;
+   }
+   if(!accepted)return {ok:false,items,groups,changed:0};
+   placed.push(accepted.items);accepted.items.forEach(i=>result.set(i.id,i));factors.set(key,accepted.factor);
+  }
+  const next=items.map(i=>result.get(i.id));
+  return {ok:true,items:next,groups:groups.map(g=>({...g,scale:g.scale*(factors.get(g.id)||1)})),changed:items.filter((i,n)=>JSON.stringify(i)!==JSON.stringify(next[n])).length};
+ }
+ return {sizes,context,pose,footprint,bounds,inside,fit,overlaps,arrange};
 })();
 if(typeof module!=='undefined')module.exports=TableFit;

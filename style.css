@@ -35,3 +35,53 @@ body.calibrating #canvas-window{display:flex;align-items:center;justify-content:
 @media(max-width:360px){.mode-switch button{font-size:11px}.mode-switch #edit-save{flex-basis:42px}}
 .corner::before{inset:auto;left:7px;top:0;width:23px;height:23px;font-size:11px}
 .corner::after{inset:24px;border:2px solid white;border-radius:50%;font-size:18px;background:#285e50aa}
+/* QA release: inline editing, persistent actions and explicit expansion. */
+.workspace{display:flex;flex-direction:column;height:min(760px,calc(100svh - 16px));scroll-margin-top:8px}
+.workspace #canvas-window{flex:1;min-height:160px;display:flex;align-items:center;justify-content:center;background:#d6dacd;border-radius:8px}
+.workspace #stage{flex:none}
+.workspace .hint{display:none}
+.workspace #inspector{flex:none;margin:0;padding:8px;border:0;border-radius:0}
+.workspace-tabs,.editor-quickbar,.save-actions,#item-picker{display:flex;align-items:center;gap:6px}
+.workspace-tabs button{flex:1;min-height:42px;padding:6px}
+.workspace-tabs button[aria-pressed=true]{background:#dce8d9;border-color:#496a4d}
+.editor-quickbar{flex:none;padding:4px 0 8px}
+.editor-quickbar button,.editor-quickbar label{flex:1;font-size:12px}
+.editor-quickbar button{padding:6px;min-height:42px}
+select{font:inherit;font-size:16px;color:var(--ink);background:#fffdf7;border:1px solid var(--line);border-radius:8px;min-height:44px;padding:4px 8px;max-width:100%}
+.editor-quickbar select{font-size:13px;min-height:40px;width:78px;padding:4px}
+#save-indicator{font-size:11px;margin:5px 0;color:#6f622f;min-height:14px}
+#save-indicator[data-state=saved]{color:#32624a}
+#save-indicator[data-state=error]{color:#9e372c}
+.mode-switch button{min-height:40px;font-size:12px}
+#item-picker{margin-top:4px}#item-picker button{flex:1;font-size:11px;min-height:36px;padding:4px}
+#item-picker button[aria-pressed=true]{background:#dce8d9;border-color:#496a4d}
+#panel-collections label{display:grid;grid-template-columns:85px 1fr;gap:8px;align-items:center;font-size:13px;margin:5px 0}
+#panel-save{padding:8px 0;min-height:140px}#panel-save p{font-size:12px;line-height:1.5}
+.save-actions button{flex:1;padding:8px}
+#surface-view{min-height:30px;font-size:10px;padding:3px 8px;margin-top:4px;border:0;background:transparent;color:#667369}
+#edit-status{display:block!important;flex:none;margin:0;padding:4px 8px;font-size:11px;line-height:1.35;min-height:32px;background:var(--paper)}
+.piece.selected{outline:none;outline-offset:0;background:transparent}
+body.item-mode .piece.selected{outline:2px solid #426c55;outline-offset:3px}
+#selection-halo{position:absolute;border:1.5px solid #52765b88;border-radius:10px;pointer-events:none;z-index:3}
+.piece svg{filter:drop-shadow(0 1px .6px #14251a77) drop-shadow(.5px 1.5px 1px #18241a22)}
+body.editing #canvas-window{display:block;border-radius:0}
+body.calibrating .editor-quickbar{display:none}
+body.calibrating #canvas-window{display:flex}
+body.editing .editor-quickbar{padding:4px 8px;background:var(--paper)}
+@media(max-height:500px) and (orientation:landscape){
+ .workspace:not(.editing){height:calc(100svh - 16px)}
+ body.editing #inspector{justify-content:flex-start;overflow:auto;padding-top:8px}
+ body.editing .workspace-tabs button{font-size:11px;min-height:36px}
+ body.editing #panel-arrange .sliders{margin:4px 0}
+ body.editing #edit-status{position:absolute;right:0;bottom:0;width:270px;font-size:10px}
+}
+@media(max-height:500px) and (orientation:landscape){
+ body:not(.editing) .workspace{position:relative;padding-right:280px}
+ body:not(.editing) .workspace #inspector{position:absolute;right:0;top:0;bottom:0;width:270px;overflow:auto}
+ body:not(.editing) .workspace #edit-status{display:none!important}
+ body:not(.editing) .workspace #canvas-window{min-height:110px}
+ .workspace .mode-switch button{min-height:32px;font-size:11px}
+ .workspace .tool-tabs button,.workspace .workspace-tabs button{min-height:30px;font-size:11px}
+ .workspace #surface-view{min-height:24px;margin:0}
+ .workspace .edit-actions button{min-height:32px}
+}

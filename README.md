@@ -1,4 +1,4 @@
-# Table Studio — POC 0.35
+# Table Studio — POC 0.36
 
 An incremental update to the existing photo-local table styling prototype.
 
@@ -64,3 +64,14 @@ Scene version 35 saves photo, arrangement and four corners in the existing atomi
 Numerical tests cover adaptive proportions, corner/inverse mapping, depth scale, narrow/wide/strong-angle layouts, 2/4/6 complete footprint containment, oversized group recovery, relative geometry and fit idempotence. Mobile WebKit tests cover circular DOM artwork, containment, fit/undo, large handles/loupe, local persistence and simulated viewport-height changes, alongside the existing POC 0.25/0.3 regression suite.
 
 **Physical iPhone Safari, camera capture, valid HEIC decoding and actual browser-bar transitions have not been tested in this environment.** Synthetic PointerEvents and viewport changes are not physical device evidence. Unsupported image handling is tested using intentionally invalid HEIC bytes, which does not establish valid HEIC support. See [DEVICE_VALIDATION.md](DEVICE_VALIDATION.md) for the exact remaining device checks. POC 1.0 live AR should remain gated on those checks and visual evaluation with real table photos.
+
+
+## POC 0.36 live QA repairs
+
+See [QA-REPORT.md](QA-REPORT.md) for baseline reproductions, causes and regression coverage. Selecting an object now stays inline. Expand table is optional and starts at 1×. Arrange, Collections and Save tabs remain available in either view. Move whole setting is the default; Edit one piece exposes a direct item picker. Save state is persistent and Restore is available inside the editor.
+
+Explicit Fit repairs gross oversized settings and overlaps as well as boundary overflow. It retains group geometry, applies consistent guest capacity limits, uses convex footprint collision tests and searches nearby free positions. It is atomic on failure and reports an actual no-op accurately. Ordinary resizing remains deliberate until Fit is pressed. Auto Set uses seat-edge clearances and overlap-aware fitting.
+
+Surface view adds only bounded compression (0.66–1) and aligns circular product silhouettes with the local table axis; it never stretches them beyond their circular envelope. Round view retains the POC 0.35 circular preview. Both are stylized alternatives, not physical 3D reconstruction. Calibration, photo and view preference persist together in scene version 36; prior saves migrate locally.
+
+`npm run test:live` runs native-control WebKit QA at BASE_URL (defaults to the local server). The Pages workflow also runs it against the deployed URL, retaining screenshot evidence. Physical-iPhone tests are still a separate release gate; do not infer them from WebKit automation.

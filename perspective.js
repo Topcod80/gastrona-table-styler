@@ -38,7 +38,9 @@ const TablePerspective=(()=>{
   // Follow the piece's longitudinal axis (fork/knife direction).
   const vx=-Math.sin(t),vy=Math.cos(t);
   const rotation=Math.atan2(c*vx+d*vy,a*vx+b*vy)*180/Math.PI-90;
-  return {...v,scale,rotation};
+  const maximum=Math.sqrt(Math.max(1e-12,(trace+Math.sqrt(Math.max(0,trace*trace-4*det*det)))/2));
+  const surfaceAngle=.5*Math.atan2(2*(a*c+b*d),a*a+b*b-c*c-d*d)*180/Math.PI;
+  return {...v,scale,rotation,flatness:Math.max(.66,Math.min(1,scale/maximum)),surfaceAngle};
  }
  return {ratio,valid,matrix,project,inverse,pose};
 })();

@@ -73,3 +73,18 @@ jobs:
             curl --fail --retry 8 --retry-delay 5 --retry-all-errors "${PAGE_URL}${file}?commit=${GITHUB_SHA}" -o "/tmp/deployed-${file}"
             cmp "${file}" "/tmp/deployed-${file}"
           done
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --ignore-scripts
+      - run: npx playwright install --with-deps webkit
+      - name: Test actual deployed site in mobile WebKit
+        env:
+          BASE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: npm run test:live
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: live-pages-qa
+          path: test-results/
+          if-no-files-found: ignore

@@ -21,8 +21,8 @@ let pw;try{pw=require('playwright')}catch{pw=require(process.env.CODEX_PRIMARY_R
   for(const g of s.groups){const list=s.items.filter(i=>i.groupId===g.id),p=list.find(i=>i.type==='plate'),glass=list.find(i=>i.type==='glass');assert.ok(Math.hypot(glass.x-p.x,(glass.y-p.y)/s.sceneRatio)<p.scale*.24)}
   // Collection changes still preserve grouping and all geometry.
   for(const [category,names] of [['plates',['Sage','Cobalt','Ivory']],['cutlery',['Brass','Ink','Silver']],['glassware',['Amber','Rose','Clear']]])for(const name of names){const before=await state();await page.getByRole('button',{name:'Change '+category+' to '+name,exact:true}).tap();const after=await state();assert.deepEqual(after.items.map(({collection,...i})=>i),before.items.map(({collection,...i})=>i));assert.deepEqual(after.groups,before.groups);}
-  // A plate tap opens the focus editor and selects its four related pieces.
-  await page.locator('.piece[aria-label^="plate"]').first().tap();await page.waitForFunction(()=>focused&&stage.clientWidth>400);
+  // Selection stays inline; expansion is explicit and starts with the entire photo.
+  await page.locator('.piece[aria-label^="plate"]').first().tap();assert.equal(await page.evaluate(()=>focused),false);await tap('expand');await page.waitForFunction(()=>focused&&viewZoom===1);
   assert.equal(await page.locator('.piece.selected').count(),4);
   assert.equal(await page.locator('body').evaluate(e=>e.classList.contains('editing')),true);
   const assertVisible=async()=>{const r=await page.locator('#inspector').boundingBox();assert.ok(r.y>=0&&r.y+r.height<=845);const b=await page.locator('#canvas-window').boundingBox();assert.ok(b.height>=200&&b.y+b.height<=r.y+1);};
@@ -60,7 +60,7 @@ let pw;try{pw=require('playwright')}catch{pw=require(process.env.CODEX_PRIMARY_R
   // Save the photo and scene atomically, then auto-restore both on reload.
   const saved=await state();assert.equal(await page.evaluate(()=>{try{validateScene(scene());return 'valid'}catch(e){return e.message}}),'valid');await tap('save');await page.waitForFunction(()=>!busy);if(!(await page.locator('#storage-note').textContent()).startsWith('Photo +')){throw Error(await page.evaluate(async()=>{try{await TableStorage.write({scene:scene(),photo:photoBlob,hadPhoto:!!photoBlob});return 'Retry wrote; UI: '+document.getElementById('storage-note').textContent}catch(e){return e.name+': '+e.message}}));}
   const record=await page.evaluate(async()=>{const r=await TableStorage.read();return {bytes:r.photo.size,type:r.photo.type,hadPhoto:r.hadPhoto,version:r.scene.version}});
-  assert.equal(record.bytes,file.buffer.length);assert.equal(record.hadPhoto,true);assert.equal(record.version,35);
+  assert.equal(record.bytes,file.buffer.length);assert.equal(record.hadPhoto,true);assert.equal(record.version,36);
   await page.reload();await ready();assert.deepEqual(await state(),saved);assert.match(await page.locator('#table-photo').getAttribute('src'),/^blob:/);assert.equal(await page.evaluate(()=>photoBlob.size),file.buffer.length);
   await tap('reset');assert.equal((await state()).items.length,0);assert.ok(await page.evaluate(()=>!!photoBlob));await tap('undo');assert.deepEqual(await state(),saved);
   await tap('guests-2');await tap('restore');await page.waitForFunction(()=>!busy&&items.length===24);assert.deepEqual(await state(),saved);await tap('undo');assert.equal((await state()).items.length,8);await tap('restore');await page.waitForFunction(()=>!busy&&items.length===24);
@@ -72,7 +72,7 @@ let pw;try{pw=require('playwright')}catch{pw=require(process.env.CODEX_PRIMARY_R
   await page.locator('#photo-input').setInputFiles({name:'bad.png',mimeType:'image/png',buffer:Buffer.from('invalid')});await page.waitForFunction(()=>document.getElementById('status').textContent.includes('could not be opened'));assert.ok(await page.evaluate(()=>!!photoBlob));
   for(const width of [320,390,844]){
    await page.setViewportSize({width,height:width===844?390:844});
-   await page.locator('.piece[aria-label^="plate"]').first().tap();await page.waitForFunction(()=>focused);await page.waitForTimeout(100);
+   await page.locator('.piece[aria-label^="plate"]').first().tap();if(!await page.evaluate(()=>focused))await tap('expand');await page.waitForFunction(()=>focused);await page.waitForTimeout(100);
    const rect=await page.locator('#inspector').boundingBox();assert.ok(rect.y>=0&&rect.y+rect.height<=(width===844?391:845));
    const shape=await page.locator('#stage').evaluate(e=>e.clientWidth/e.clientHeight);assert.ok(Math.abs(shape-1.5)<.02);await tap('done');
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
@@ -94,11 +94,11 @@ let pw;try{pw=require('playwright')}catch{pw=require(process.env.CODEX_PRIMARY_R
   await page.screenshot({path:'test-results/calibration-mobile.png'});
   await tap('calibration-done');assert.equal(await page.evaluate(()=>calibrating),false);
   (await state()).calibration.forEach((p,i)=>{near(p.x,q[i].x);near(p.y,q[i].y)});
-  await tap('done');await tap('guests-6');assert.equal((await state()).items.length,24);
+  assert.equal(await page.evaluate(()=>focused),false);await tap('guests-6');assert.equal((await state()).items.length,24);
   // Browser-rendered plates shrink with depth, and the actual hit regions track them.
   const rects=await page.locator('.piece[aria-label^="plate"]').evaluateAll(els=>els.map(el=>{const r=el.getBoundingClientRect();return {width:r.width,height:r.height}}));
   assert.ok(rects[0].width<rects[2].width*.8);assert.ok(rects[0].height<rects[2].height*.8);
-  await page.locator('.piece[aria-label^="plate"]').nth(2).tap();await page.waitForFunction(()=>focused);await page.waitForTimeout(100);
+  await page.locator('.piece[aria-label^="plate"]').nth(2).tap();if(!await page.evaluate(()=>focused))await tap('expand');await page.waitForFunction(()=>focused);await page.waitForTimeout(100);
   assert.equal(await page.locator('.piece.selected').count(),4);
   const mappedGesture=await page.evaluate(()=>{
    const before=structuredClone(members()),r=stage.getBoundingClientRect(),target=document.querySelector('.piece.selected'),h=TablePerspective.matrix(calibration),old=stage.setPointerCapture;stage.setPointerCapture=()=>{};
@@ -117,11 +117,11 @@ let pw;try{pw=require('playwright')}catch{pw=require(process.env.CODEX_PRIMARY_R
   await page.screenshot({path:'test-results/perspective-six-guests.png'});
   await tap('done');const calibrated=await state();await tap('save');await page.waitForFunction(()=>!busy);await page.reload();await ready();assert.deepEqual(await state(),calibrated);assert.equal(await page.evaluate(()=>photoBlob.size),file.buffer.length);
   // Invalid quadrilateral cannot be committed; Cancel retains the saved calibration.
-  await tap('calibrate');await page.evaluate(()=>{calibrationDraft=[calibration[0],calibration[2],calibration[1],calibration[3]];paint()});assert.equal(await page.locator('#calibration-done').isDisabled(),true);await tap('calibration-cancel');assert.deepEqual(await state(),calibrated);await tap('done');
-  await tap('calibrate');await tap('calibration-reset');assert.equal((await state()).calibration,null);await tap('undo');assert.deepEqual(await state(),calibrated);await tap('done');
+  await tap('calibrate');await page.evaluate(()=>{calibrationDraft=[calibration[0],calibration[2],calibration[1],calibration[3]];paint()});assert.equal(await page.locator('#calibration-done').isDisabled(),true);await tap('calibration-cancel');assert.deepEqual(await state(),calibrated);if(await page.evaluate(()=>focused))await tap('done');
+  await tap('calibrate');await tap('calibration-reset');assert.equal((await state()).calibration,null);await tap('undo');assert.deepEqual(await state(),calibrated);
   // Replacing a photo clears calibration; undo restores both the original photo and plane.
   await page.locator('#photo-input').setInputFiles(file);await page.waitForFunction(()=>calibration===null);await tap('undo');assert.deepEqual(await state(),calibrated);
-  const legacy=await page.evaluate(()=>validateScene({...scene(),version:25,calibration:undefined}));assert.equal(legacy.calibration,null);assert.equal(legacy.version,35);
+  const legacy=await page.evaluate(()=>validateScene({...scene(),version:25,calibration:undefined}));assert.equal(legacy.calibration,null);assert.equal(legacy.version,36);
   // POC 0.35: actual DOM artwork has equal X/Y scale across each table shape.
   const shapes={
    narrow:[{x:.39,y:.95},{x:.64,y:.92},{x:.6,y:.1},{x:.44,y:.12}],
@@ -130,7 +130,7 @@ let pw;try{pw=require('playwright')}catch{pw=require(process.env.CODEX_PRIMARY_R
    severe:[{x:.04,y:.95},{x:.96,y:.92},{x:.58,y:.12},{x:.42,y:.13}]
   };
   for(const [name,quad] of Object.entries(shapes)){
-   await tap('calibrate');await page.evaluate(q=>{calibrationDraft=q;paint()},quad);await tap('calibration-done');await tap('done');
+   await tap('calibrate');await page.evaluate(q=>{calibrationDraft=q;paint()},quad);await tap('calibration-done');
    for(const n of [2,4,6]){await tap('guests-'+n);assert.equal((await state()).items.length,n*4);
     assert.equal(await page.evaluate(()=>{const c=TableFit.context(calibration,sceneRatio);return TableFit.inside(items,c)}),true,name+' '+n+' contained');
     const plates=await page.locator('.piece[aria-label^="plate"]').evaluateAll(els=>els.map(el=>{const m=new DOMMatrix(getComputedStyle(el).transform);return {a:Math.hypot(m.a,m.b),b:Math.hypot(m.c,m.d),w:parseFloat(el.style.width),h:parseFloat(el.style.height)}}));
@@ -145,9 +145,9 @@ let pw;try{pw=require('playwright')}catch{pw=require(process.env.CODEX_PRIMARY_R
   await tap('calibrate');await page.waitForTimeout(100);
   const grabbed=await page.locator('.corner').first().evaluate(el=>{const r=el.getBoundingClientRect(),before={...calibrationDraft[0]},original=el.setPointerCapture;el.setPointerCapture=()=>{};
    const emit=t=>el.dispatchEvent(new PointerEvent(t,{bubbles:true,pointerType:'touch',pointerId:77,clientX:r.x+8,clientY:r.y+9}));emit('pointerdown');emit('pointermove');const during={...calibrationDraft[0]},loupe=!document.getElementById('corner-loupe').hidden;emit('pointerup');el.setPointerCapture=original;return {before,during,loupe};});
-  assert.deepEqual(grabbed.before,grabbed.during);assert.equal(grabbed.loupe,true);await tap('calibration-cancel');await tap('done');
+  assert.deepEqual(grabbed.before,grabbed.during);assert.equal(grabbed.loupe,true);await tap('calibration-cancel');
   // Viewport resizing simulates available-height changes, not actual Safari bars.
-  await page.locator('.piece[aria-label^="plate"]').first().tap();await page.waitForFunction(()=>focused);
+  await page.locator('.piece[aria-label^="plate"]').first().tap();if(!await page.evaluate(()=>focused))await tap('expand');await page.waitForFunction(()=>focused);
   for(const height of [664,844,720]){await page.setViewportSize({width:390,height});await page.waitForTimeout(100);const r=await page.locator('#inspector').boundingBox();assert.ok(r.y>=0&&r.y+r.height<=height+1);}
   await tap('done');await page.setViewportSize({width:390,height:844});
   assert.equal(await page.locator('#camera-input').getAttribute('capture'),'environment');
