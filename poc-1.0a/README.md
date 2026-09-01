@@ -19,6 +19,9 @@ Use Apple AR Quick Look from Safari. Export the existing procedural plate to USD
 
 Primary sources:
 
+- [Apple WWDC26: HTML Model Element](https://developer.apple.com/videos/play/wwdc2026/215/), section 11:06: iPhone AR still launches Quick Look.
+- Current [WebKit Cocoa feature defaults](https://github.com/WebKit/WebKit/blob/main/Source/WTF/wtf/PlatformEnableCocoa.h) enable WebXR for `PLATFORM(VISION)`; the [generic defaults](https://github.com/WebKit/WebKit/blob/main/Source/WTF/wtf/PlatformEnable.h) otherwise disable it. Read on 2026-09-01; source defaults alone are not a device test.
+
 - [Apple AR Quick Look](https://developer.apple.com/quick-look-gallery/) and [surface placement overview](https://developer.apple.com/documentation/arkit/previewing-a-model-with-ar-quick-look).
 - [WebKit: Safari AR links, MIME and feature detection](https://webkit.org/blog/8421/viewing-augmented-reality-assets-in-safari-for-ios/).
 - [Apple engineer on WebXR immersive-ar](https://developer.apple.com/forums/thread/756850). This older explicit statement is read alongside the current release material, not presented as a 2026 announcement.
