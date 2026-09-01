@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f5f2eb">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>Table Studio · One plate in AR</title>
+<link rel="stylesheet" href="./style.css">
+<script type="module" src="./app.js"></script>
+</head>
+<body>
+<main>
+<header><a href="../">TABLE <em>STUDIO</em></a><span>POC 1.0A · EXPERIMENT</span></header>
+<p class="eyebrow">ONE PLATE. YOUR REAL TABLE.</p>
+<h1>Walk around<br>your place setting.</h1>
+<p class="intro">Place a single ceramic plate on your table using Apple’s AR viewer.</p>
+<p id="capability" role="status">Checking this browser…</p>
+<a id="quicklook" rel="ar" type="model/vnd.usdz+zip" href="./plate.usdz#allowsContentScaling=0" aria-label="Place plate on your table" hidden><img src="./launch.svg" alt="Place plate on your table" width="600" height="100"></a>
+<p id="native-note" class="small" hidden>Opens Apple AR Quick Look · fixed 26 cm plate · native camera controls</p>
+<p id="unsupported" class="notice" hidden>Live placement is unavailable here. Open this page in Safari on an AR-capable iPhone or iPad. The preview below is 3D only, with no camera or world tracking.</p>
+<section id="how" aria-labelledby="how-title">
+<h2 id="how-title">In Apple’s viewer</h2>
+<ol><li>Choose <strong>AR</strong> and slowly scan a well-lit tabletop.</li><li>Use Apple’s placement controls to position the plate. Drag to reposition; use two fingers to rotate.</li><li>Move your phone around the table. Check whether the plate stays at the same spot.</li></ol>
+<p class="small">Tracking lasts within the viewer session. This page cannot read the anchor or confirm that placement succeeded. Nothing is saved when you return.</p>
+</section>
+<section class="preview" aria-labelledby="preview-title">
+<div class="section-heading"><h2 id="preview-title">Look at the plate</h2><span>3D PREVIEW · NOT AR</span></div>
+<div id="preview-stage"><img id="poster" src="./poster.svg" alt="Illustration of the ivory plate; load the 3D preview to inspect the actual model" width="600" height="380"><canvas id="model" aria-label="Interactive 3D plate preview, not anchored AR" hidden></canvas></div>
+<button id="preview-start" type="button">Load 3D preview</button>
+<div id="preview-controls" hidden><label for="rotation">Rotate preview</label><input id="rotation" type="range" min="-180" max="180" value="0"><button id="preview-reset" type="button">Reset view</button></div>
+<p id="preview-status" class="small" role="status">The same procedural plate from POC 0.4. No product photography.</p>
+</section>
+<details><summary>Compatibility &amp; privacy</summary>
+<p>Quick Look uses Apple’s native AR tracking. It opens from Safari, but runs outside this page. A camera feed alone cannot keep an object fixed to a table.</p>
+<dl><dt>Apple AR handoff</dt><dd id="quicklook-support">Checking…</dd><dt>Browser WebXR immersive AR</dt><dd id="webxr-support">Checking…</dd></dl>
+<p>This experiment uses Quick Look, including on browsers that may separately support WebXR. It does not implement a WebXR renderer.</p>
+<p>We do not request camera frames, upload images, or store arrangements. The page downloads only its own code and plate asset. Apple manages camera permission and processing inside Quick Look.</p>
+<p>If only Object mode appears, use Safari directly, check camera access, and try an AR-capable device. A glossy or featureless table may track poorly.</p>
+<a href="./plate.usdz" download>Download the 26 cm USDZ plate</a>
+</details>
+<footer>One original plate · No accounts · No saved arrangement<br><a href="../">Return to POC 0.4 Stable</a></footer>
+<noscript><p>Enable JavaScript to check compatibility. On a supported iPhone, <a rel="ar" href="./plate.usdz#allowsContentScaling=0"><img src="./launch.svg" alt="Open the plate in Apple AR Quick Look" width="300" height="50"></a></p></noscript>
+</main>
+</body>
+</html>
