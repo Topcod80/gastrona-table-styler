@@ -4,9 +4,10 @@ const TableFit=(()=>{
  const P=typeof module!=='undefined'?require('./perspective.js'):TablePerspective;
  const sizes={plate:[.24,1],glass:[.07,1],fork:[.05,140/32],knife:[.05,140/32]};
  const identity=[{x:0,y:1},{x:1,y:1},{x:1,y:0},{x:0,y:0}];
- function context(q,imageRatio){return {h:P.matrix(q||identity),imageRatio,ratio:q?P.ratio(q,imageRatio):imageRatio,surface:!!q};}
+ function context(q,imageRatio,three=false){return {three,h:P.matrix(q||identity),imageRatio,ratio:q?P.ratio(q,imageRatio):imageRatio,surface:!!q};}
  function pose(i,ctx){return ctx.surface?P.pose(ctx.h,i,ctx.ratio,ctx.imageRatio):{x:i.x,y:i.y,scale:1,rotation:i.rotation};}
  function footprint(i,ctx){
+  if(ctx.three){const [width,aspect]=sizes[i.type],a=width*i.scale*.54,b=a*aspect,t=i.rotation*Math.PI/180,c=Math.cos(t),s=Math.sin(t);return [[-1,-1],[1,-1],[1,1],[-1,1]].map(([x,y])=>P.project(ctx.h,{x:i.x+c*x*a-s*y*b,y:i.y+(s*x*a+c*y*b)*ctx.ratio}));}
   const v=pose(i,ctx),[width,aspect]=sizes[i.type],a=width*i.scale*v.scale/2,b=a*(i.type==='glass'&&!ctx.surface?120/70:aspect);
   // Conservative rotated envelope includes a small contact-shadow allowance.
   const theta=v.rotation*Math.PI/180,c=Math.cos(theta),s=Math.sin(theta),pad=width*i.scale*v.scale*.08;

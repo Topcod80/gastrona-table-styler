@@ -72,3 +72,14 @@ console.log('PASS QA: in-bounds oversized overlap repaired; proportional packing
  const pose=P.pose(h,p,P.ratio(q,1.5),1.5),next=P.project(h,{x:p.x+.001,y:p.y}),at=P.project(h,p);
  const expected=Math.atan2((next.y-at.y)/1.5,next.x-at.x)*180/Math.PI;
  assert.ok(Math.abs(pose.surfaceAngle-expected)<1e-6,"Plate axis follows local table width, not its upright depth axis"); }
+// Exact ground-plane anchors and real homogeneous depth for elevated 3D vertices.
+const C=require('../camera.js');
+for(const quad of Object.values(fixtures)){
+ const camera=C.solve(quad,1.5),ratio=camera.ratio;
+ source.forEach((p,i)=>{const v=C.project(camera,p.x,p.y/ratio);close(v.x,quad[i].x);close(v.y,quad[i].y);});
+ const foot=C.project(camera,.5,.7/ratio),rim=C.project(camera,.5,.7/ratio,.1);
+ assert.ok(rim.y<foot.y,'Glass height rises above its foot');assert.ok(camera.clip.every(Number.isFinite));
+ for(const n of [2,4,6]){const ctx=F.context(quad,1.5,true),seats=G.layout(n,ctx.ratio);let id=0;const gs=seats.map((s,i)=>({id:'g'+i,scale:s.scale})),items=seats.flatMap((s,i)=>s.items.map(p=>({...p,id:++id,groupId:gs[i].id})));const fit=F.arrange(items,gs,ctx,n);assert.ok(fit.ok);assert.ok(F.inside(fit.items,ctx));}
+}
+const cam=C.solve(q,1.5);assert.ok(C.project(cam,.5,.2/cam.ratio).w>C.project(cam,.5,.8/cam.ratio).w,'Far objects have larger perspective denominator');
+console.log('PASS 3D: exact quad anchors, elevated glass projection, virtual-camera depth, complete 2/4/6 ground footprints fit.');

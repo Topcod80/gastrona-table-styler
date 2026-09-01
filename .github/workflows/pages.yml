@@ -5,6 +5,8 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+env:
+  LIBGL_ALWAYS_SOFTWARE: "1"
 permissions:
   contents: read
 concurrency:
@@ -19,7 +21,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - run: npm install --ignore-scripts
+      - run: npm ci --ignore-scripts
+      - run: npm run build
       - run: npx playwright install --with-deps webkit
       - run: npm run test:logic
       - name: Mobile WebKit interaction tests
@@ -51,10 +54,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --ignore-scripts
+      - run: npm run build
+      - uses: actions/download-artifact@v4
+        with:
+          name: webkit-mobile-preview
+          path: qa-preview
       - name: Stage application files only
         run: |
           mkdir _site
-          cp index.html style.css assets.js geometry.js perspective.js fit.js storage.js app.js _site/
+          cp index.html style.css assets.js geometry.js perspective.js camera.js view3d.js fit.js storage.js app.js _site/
+          cp -r dist _site/
+          mkdir _site/validation
+          cp qa-preview/comparison-2d.png qa-preview/comparison-3d.png qa-preview/performance-3d.json _site/validation/
           touch _site/.nojekyll
       - uses: actions/configure-pages@v5
         with:
@@ -69,14 +84,15 @@ jobs:
         env:
           PAGE_URL: ${{ steps.deployment.outputs.page_url }}
         run: |
-          for file in index.html style.css assets.js geometry.js perspective.js fit.js storage.js app.js; do
-            curl --fail --retry 8 --retry-delay 5 --retry-all-errors "${PAGE_URL}${file}?commit=${GITHUB_SHA}" -o "/tmp/deployed-${file}"
-            cmp "${file}" "/tmp/deployed-${file}"
+          for file in index.html style.css assets.js geometry.js perspective.js camera.js view3d.js fit.js storage.js app.js dist/table3d.js; do
+            curl --fail --retry 8 --retry-delay 5 --retry-all-errors "${PAGE_URL}${file}?commit=${GITHUB_SHA}" -o "/tmp/deployed-$(basename "$file")"
+            cmp "${file}" "/tmp/deployed-$(basename "$file")"
           done
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - run: npm install --ignore-scripts
+      - run: npm ci --ignore-scripts
+      - run: npm run build
       - run: npx playwright install --with-deps webkit
       - name: Test actual deployed site in mobile WebKit
         env:

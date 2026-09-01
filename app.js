@@ -19,7 +19,7 @@ const stage = $('stage');
 const clamp = (v,a,b) => Math.max(a,Math.min(b,v));
 const angle = v => ((v+180)%360+360)%360-180;
 const current = () => items.find(i=>i.id===selected);
-function scene(){return {version:36,items,groups,guestCount,collections,spacing,sceneRatio,calibration,surfaceView};}
+function scene(){return {version:40,items,groups,guestCount,collections,spacing,sceneRatio,calibration,surfaceView};}
 function checkpoint(){revision++;history.push({scene:JSON.parse(JSON.stringify(scene())),selected,photo:photoBlob});if(history.length>25)history.shift();$('undo').disabled=false;}
 function announce(message){$('status').textContent=message;$('edit-status').textContent=message;}
 function currentGroup(){const item=current();return item?.groupId?groups.find(g=>g.id===item.groupId):null;}
@@ -27,7 +27,7 @@ function members(){const item=current();if(!item)return [];return selectionMode=
 function capture(){const list=members().map(i=>({...i})),g=selectionMode==='setting'?currentGroup():null;return {items:list,pivot:TableGeometry.pivot(list),groupId:g?.id,scale:g?.scale??list[0]?.scale??1,rotation:g?.rotation??list[0]?.rotation??0};}
 function applyTransform(base,change){
   const result=TableGeometry.transform(base.items,base.pivot,planeRatio(),change);
-  if(calibration&&(change.factor===undefined||Math.abs(change.factor-1)<1e-8)&&!change.rotation){const fit=TableFit.fit(result.items,TableFit.context(calibration,sceneRatio));if(!fit.ok){announce('This selection cannot fit at the minimum size. Undo or adjust the table corners.');return;}result.items=fit.items;result.factor*=fit.factor;}
+  if(calibration&&(change.factor===undefined||Math.abs(change.factor-1)<1e-8)&&!change.rotation){const fit=TableFit.fit(result.items,fitContext());if(!fit.ok){announce('This selection cannot fit at the minimum size. Undo or adjust the table corners.');return;}result.items=fit.items;result.factor*=fit.factor;}
   const mapped=new Map(result.items.map(i=>[i.id,i]));items=items.map(i=>mapped.get(i.id)||i);
   const g=groups.find(g=>g.id===base.groupId);if(g){g.scale=base.scale*result.factor;g.rotation=angle(base.rotation+(change.rotation||0));}
   paint();
@@ -58,8 +58,8 @@ function position(el,item){
   const active=members().some(i=>i.id===item.id);el.classList.toggle('selected',active);el.setAttribute('aria-pressed',String(active));
   el.dataset.group=item.groupId||'';
 }
-function render(){updatePlane();const layer=$('items');layer.replaceChildren();for(const item of items){const el=document.createElement('button');el.className='piece';el.dataset.id=item.id;el.setAttribute('aria-label',`${item.type} ${item.id}`);el.innerHTML='<span class=visual>'+TableAssets.render(item.type,item.collection || collections[TableAssets.categories[item.type]],!!activeCalibration())+'</span>';position(el,item);layer.append(el);} $('empty').hidden=!!photoURL||items.length>0;for(const button of $('products').children){const type=button.dataset.type;button.innerHTML=TableAssets.render(type,collections[TableAssets.categories[type]])+'<span>'+type[0].toUpperCase()+type.slice(1)+'</span>'; }controls();paintHalo();}
-function paint(){updatePlane();for(const item of items){const el=$('items').querySelector(`[data-id="${item.id}"]`);if(el)position(el,item);}controls();paintHalo();}
+function render(){updatePlane();const layer=$('items');layer.replaceChildren();for(const item of items){const el=document.createElement('button');el.className='piece';el.dataset.id=item.id;el.setAttribute('aria-label',`${item.type} ${item.id}`);el.innerHTML='<span class=visual>'+TableAssets.render(item.type,item.collection || collections[TableAssets.categories[item.type]],!!activeCalibration())+'</span>';position(el,item);layer.append(el);} $('empty').hidden=!!photoURL||items.length>0;for(const button of $('products').children){const type=button.dataset.type;button.innerHTML=TableAssets.render(type,collections[TableAssets.categories[type]])+'<span>'+type[0].toUpperCase()+type.slice(1)+'</span>'; }controls();paintHalo();sync3D();}
+function paint(){updatePlane();for(const item of items){const el=$('items').querySelector(`[data-id="${item.id}"]`);if(el)position(el,item);}controls();paintHalo();sync3D();}
 for(const type of Object.keys(TableAssets.categories)){const button=document.createElement('button');button.className='product';button.dataset.type=type;button.setAttribute('aria-label',`Add ${type}`);button.innerHTML=`${TableAssets.render(type,collections[TableAssets.categories[type]])}<span>${type[0].toUpperCase()+type.slice(1)}</span>`;button.addEventListener('click',()=>{checkpoint();selected=++serial;items.push({id:selected,type,collection:collections[TableAssets.categories[type]],x:.5+(items.length%3-1)*.06,y:.5,scale:1,rotation:0,tilt:1,groupId:null});if(calibration)fitArrangement([selected]);render();announce(`${type} added.`);});$('products').append(button);}
 function point(e){const rect=stage.getBoundingClientRect(),p={x:(e.clientX-rect.left)/stage.clientWidth,y:(e.clientY-rect.top)/stage.clientHeight};
  const v=calibration?TablePerspective.project(TablePerspective.inverse(TablePerspective.matrix(calibration)),p):p;
@@ -68,7 +68,7 @@ function imagePoint(item){return calibration?TablePerspective.project(TablePersp
 
 function baseline(){if(!current()||!pointers.size){gesture=null;return;}gesture={...capture(),points:[...pointers.values()].map(p=>({...p})),width:stage.clientWidth,height:stage.clientWidth/planeRatio()};}
 stage.addEventListener('pointerdown',e=>{
-  if(calibrating)return;if(e.pointerType==='mouse'&&e.button!==0)return;const target=e.target.closest('.piece');
+  if(calibrating)return;if(e.pointerType==='mouse'&&e.button!==0)return;let target=e.target.closest('.piece');if(is3D()){const r=stage.getBoundingClientRect(),hit=renderer3D.pick((e.clientX-r.left)/stage.clientWidth,(e.clientY-r.top)/stage.clientHeight);if(hit)target=$('items').querySelector(`[data-id="${hit}"]`);}
   if(!pointers.size){selected=target?Number(target.dataset.id):null;paint();
     if(!current()){if(!focused)return;pan={id:e.pointerId,x:e.clientX,y:e.clientY,left:canvasWindow.scrollLeft,top:canvasWindow.scrollTop};stage.setPointerCapture(e.pointerId);return;}
     sliderBase=null;checkpoint();
@@ -90,7 +90,7 @@ stage.addEventListener('pointermove',e=>{
 });
 function endPointer(e){if(pan?.id===e.pointerId)pan=null;if(!pointers.has(e.pointerId))return;pointers.delete(e.pointerId);baseline();}
 for(const event of ['pointerup','pointercancel','lostpointercapture'])stage.addEventListener(event,endPointer);
-$('items').addEventListener('click',e=>{const el=e.target.closest('.piece');if(el){selected=Number(el.dataset.id);sliderBase=null;paint();}});
+$('items').addEventListener('click',e=>{const el=e.target.closest('.piece');if(el){const r=stage.getBoundingClientRect(),hit=is3D()?renderer3D.pick((e.clientX-r.left)/stage.clientWidth,(e.clientY-r.top)/stage.clientHeight):null;selected=hit||Number(el.dataset.id);sliderBase=null;paint();}});
 for(const mode of ['item','setting'])$('mode-'+mode).addEventListener('click',()=>{selectionMode=mode;sliderBase=null;paint();});
 for(const key of ['size','rotation','tilt']){
   $(key).addEventListener('input',()=>{
@@ -172,7 +172,7 @@ function autoSet(count){
     const group={id:'g'+(++groupSerial),scale:seat.scale,rotation:seat.rotation,spacing:seat.spacing};groups.push(group);
     for(const piece of seat.items)items.push({...piece,id:++serial,groupId:group.id,collection:collections[TableAssets.categories[piece.type]]});
   }
-  const layoutFit=TableFit.arrange(items,groups,TableFit.context(calibration,sceneRatio),count);const fitted=layoutFit.ok;if(fitted){items=layoutFit.items;groups=layoutFit.groups;}selected=items.find(i=>i.type==='plate')?.id??null;render();if(!focused)workspace.scrollIntoView({block:'start'});announce(fitted?'Set for '+count+' guests. Tap a plate to move its whole place setting.':'This table is too tight for this layout. Adjust the corners or choose fewer guests.');
+  const layoutFit=TableFit.arrange(items,groups,fitContext(),count);const fitted=layoutFit.ok;if(fitted){items=layoutFit.items;groups=layoutFit.groups;}selected=items.find(i=>i.type==='plate')?.id??null;render();if(!focused)workspace.scrollIntoView({block:'start'});announce(fitted?'Set for '+count+' guests. Tap a plate to move its whole place setting.':'This table is too tight for this layout. Adjust the corners or choose fewer guests.');
 }
 for(const n of [2,4,6])$('guests-'+n).addEventListener('click',()=>autoSet(n));
 for(const mode of ['compact','standard','formal'])$('spacing-'+mode).addEventListener('click',()=>{
@@ -184,7 +184,7 @@ $('reset').addEventListener('click',()=>{checkpoint();items=[];groups=[];selecte
 $('forward').addEventListener('click',()=>{if(!current())return;checkpoint();const list=members(),ids=new Set(list.map(i=>i.id));items=items.filter(i=>!ids.has(i.id)).concat(list);render();announce('Selection brought to front.');});
 function applyScene(data){({items,groups,guestCount,collections,spacing,sceneRatio,calibration=null,surfaceView=true}=JSON.parse(JSON.stringify(data)));selected=null;serial=Math.max(serial,0,...items.map(i=>i.id));groupSerial=Math.max(groupSerial,0,...groups.map(g=>Number(g.id.slice(1))));pointers.clear();gesture=null;}
 function validateScene(data){
-  if(!data||![25,30,35,36].includes(data.version)||![null,2,4,6].includes(data.guestCount)||!Array.isArray(data.items)||data.items.length>500||!Array.isArray(data.groups)||data.groups.length>500||!Number.isFinite(data.sceneRatio)||data.sceneRatio<.05||data.sceneRatio>20||!Object.hasOwn(TableGeometry.spacingFactors,data.spacing))throw Error('Invalid scene');
+  if(!data||![25,30,35,36,40].includes(data.version)||![null,2,4,6].includes(data.guestCount)||!Array.isArray(data.items)||data.items.length>500||!Array.isArray(data.groups)||data.groups.length>500||!Number.isFinite(data.sceneRatio)||data.sceneRatio<.05||data.sceneRatio>20||!Object.hasOwn(TableGeometry.spacingFactors,data.spacing))throw Error('Invalid scene');
   for(const [category,choices] of Object.entries(TableAssets.collections))if(!choices.some(c=>c.id===data.collections?.[category]))throw Error('Invalid collection');
   const groupIds=new Set();
   for(const g of data.groups){if(!/^g[1-9][0-9]{0,8}$/.test(g.id)||groupIds.has(g.id)||!Number.isFinite(g.scale)||g.scale<.01||g.scale>40||!Number.isFinite(g.rotation)||Math.abs(g.rotation)>180||!Object.hasOwn(TableGeometry.spacingFactors,g.spacing))throw Error('Invalid group');groupIds.add(g.id);}
@@ -194,7 +194,7 @@ function validateScene(data){
     if(Math.abs(i.x)>10||Math.abs(i.y)>10||i.scale<.079999||i.scale>3.000001||Math.abs(i.rotation)>180||i.tilt<.55||i.tilt>1)throw Error('Out of range');
   }
   if(data.version!==25&&data.calibration!==null&&!TablePerspective.valid(data.calibration))throw Error('Invalid calibration');
-  const migrated={...JSON.parse(JSON.stringify(data)),version:36,calibration:data.version===25?null:data.calibration,surfaceView:data.surfaceView!==false};
+  const migrated={...JSON.parse(JSON.stringify(data)),version:40,calibration:data.version===25?null:data.calibration,surfaceView:data.surfaceView!==false};
   if(data.version===30&&migrated.calibration){const ratio=TablePerspective.ratio(migrated.calibration,migrated.sceneRatio);for(const g of migrated.groups){const list=migrated.items.filter(i=>i.groupId===g.id);if(!list.length)continue;const p=TableGeometry.pivot(list);for(const i of list)i.y=p.y+(i.y-p.y)*ratio/1.5;}}
   return migrated;
 }
@@ -237,13 +237,13 @@ for(const type of Object.keys(dimensions))$('pick-'+type).addEventListener('clic
 $('surface-view').addEventListener('click',()=>{checkpoint();surfaceView=!surfaceView;paint();});
 for(const [category,choices] of Object.entries(TableAssets.collections)){const select=$('edit-'+category);for(const c of choices){const option=document.createElement('option');option.value=c.id;option.textContent=c.name;select.append(option);}select.addEventListener('change',()=>changeCollection(category,select.value));}
 function fitArrangement(ids=null){
- const allowed=ids?new Set(ids):null,ctx=TableFit.context(calibration,sceneRatio),batches=new Map();
+ const allowed=ids?new Set(ids):null,ctx=fitContext(),batches=new Map();
  for(const i of items){if(allowed&&!allowed.has(i.id))continue;const key=i.groupId||'item-'+i.id;if(!batches.has(key))batches.set(key,[]);batches.get(key).push(i);}
  let ok=true;
  for(const [key,list] of batches){const result=TableFit.fit(list,ctx);if(!result.ok){ok=false;continue;}const map=new Map(result.items.map(i=>[i.id,i]));items=items.map(i=>map.get(i.id)||i);const group=groups.find(g=>g.id===key);if(group)group.scale*=result.factor;}
  return ok;
 }
-function fitCommand(){if(!items.length)return;const result=TableFit.arrange(items,groups,TableFit.context(calibration,sceneRatio),guestCount);
+function fitCommand(){if(!items.length)return;const result=TableFit.arrange(items,groups,fitContext(),guestCount);
  if(!result.ok){announce('Not enough room for all pieces. Nothing changed. Try fewer settings.');return;}
  if(!result.changed){announce('Already fits: every setting is within the table and clear of the others.');return;}
  checkpoint();items=result.items;groups=result.groups;sliderBase=null;render();announce('Fitted '+result.changed+' pieces: sizes balanced and overlaps cleared. Undo restores your edits.');}
@@ -285,3 +285,5 @@ for(const el of document.querySelectorAll('.corner')){
 render();
 document.querySelector('main').inert=true;
 window.TableStudioReady=restoreScene(true).finally(()=>{document.querySelector('main').inert=false;});
+
+setup3D();

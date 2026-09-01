@@ -1,0 +1,2 @@
+const fs=require('node:fs'),zlib=require('node:zlib');
+(async()=>{fs.mkdirSync('dist',{recursive:true});await require('esbuild').build({entryPoints:['src/renderer3d.js'],outfile:'dist/table3d.js',bundle:true,format:'iife',globalName:'Table3D',minify:true,target:['safari16'],legalComments:'eof'});fs.copyFileSync('node_modules/three/LICENSE','dist/THREE-LICENSE.txt');const b=fs.readFileSync('dist/table3d.js');console.log('3D bundle:',b.length,'bytes;',zlib.gzipSync(b).length,'gzip bytes');})();

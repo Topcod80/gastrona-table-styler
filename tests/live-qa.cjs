@@ -6,6 +6,7 @@ let pw;try{pw=require('playwright')}catch{pw=require(process.env.CODEX_PRIMARY_R
  try{
  const base=(process.env.BASE_URL||'http://127.0.0.1:8000/').replace(/\/$/,'')+'/';
  const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:2});
+ await context.addInitScript(()=>sessionStorage.setItem('table-studio.renderer','2d'));
  const page=await context.newPage(),errors=[],unexpected=[];page.setDefaultTimeout(15000);
  page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(r.method()!=='GET'||!r.url().startsWith(base)&&!r.url().startsWith('blob:')&&!r.url().startsWith('data:'))unexpected.push(r.url());});
  const tap=id=>page.locator('#'+id).tap();

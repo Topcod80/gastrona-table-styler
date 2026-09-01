@@ -1,14 +1,19 @@
 {
   "name": "table-studio",
-  "version": "0.36.0",
+  "version": "0.40.0",
   "private": true,
   "scripts": {
     "start": "python3 -m http.server 8000",
-    "test": "node tests/interaction.cjs && node tests/live-qa.cjs",
+    "test": "node tests/interaction.cjs && node tests/live-qa.cjs && node tests/three.cjs",
     "test:logic": "node tests/logic.cjs",
-    "test:live": "node tests/live-qa.cjs"
+    "test:live": "node tests/live-qa.cjs && node tests/three.cjs",
+    "build": "node scripts/build.cjs"
   },
   "devDependencies": {
-    "playwright": "1.62.1"
+    "playwright": "1.62.1",
+    "esbuild": "0.25.12"
+  },
+  "dependencies": {
+    "three": "0.185.0"
   }
 }
