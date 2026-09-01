@@ -1,0 +1,28 @@
+name: Deployed POC 0.4 audit baseline
+on:
+  push:
+    paths: ['tests/audit.cjs', '.github/workflows/audit.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      LIBGL_ALWAYS_SOFTWARE: '1'
+      BASE_URL: https://topcod80.github.io/gastrona-table-styler/
+      AUDIT_BASELINE: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --ignore-scripts
+      - run: npx playwright install --with-deps webkit
+      - run: node tests/audit.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: deployed-audit
+          path: test-results/
