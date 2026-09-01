@@ -3,7 +3,7 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),{webkit}=require('playwright');
 (async()=>{
  const base=(process.env.BASE_URL||'http://127.0.0.1:8000/').replace(/\/$/,'')+'/',baseline=process.env.AUDIT_BASELINE==='1';
- const browser=await webkit.launch({headless:true}),report={base,baseline,checks:[],performance:{},network:[],console:[],errors:[]};
+ const browser=await webkit.launch({headless:true}),report={base,baseline,commit:process.env.GITHUB_SHA||null,checkedAt:new Date().toISOString(),checks:[],performance:{},network:[],console:[],errors:[]};
  fs.mkdirSync('test-results',{recursive:true});
  const check=(id,pass,detail)=>{report.checks.push({id,pass,detail});console.log('AUDIT '+id+' '+(pass?'PASS':'FAIL')+' '+JSON.stringify(detail??''));};
  try{
@@ -17,6 +17,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),{webkit}=requir
  const chooser=page.waitForEvent('filechooser');await tap('choose');await(await chooser).setFiles(file);await page.waitForFunction(()=>is3D());await drawn();
  const contrast=await page.locator('.privacy').evaluate(e=>{const values=s=>s.match(/[\d.]+/g).slice(0,3).map(Number),lum=a=>a.map(n=>n/255).map(n=>n<=.04045?n/12.92:((n+.055)/1.055)**2.4).reduce((s,v,i)=>s+v*[.2126,.7152,.0722][i],0),a=lum(values(getComputedStyle(e).color)),b=lum(values(getComputedStyle(document.documentElement).backgroundColor));return (Math.max(a,b)+.05)/(Math.min(a,b)+.05)});check('small-text-contrast',contrast>=4.5,{ratio:contrast});
  check('3d-initializes',await page.locator('#render-status').getAttribute('data-mode')==='3d');
+ report.performance.initialLoading=await page.evaluate(()=>({navigation:performance.getEntriesByType('navigation').map(n=>({domContentLoadedMs:n.domContentLoadedEventEnd,loadMs:n.loadEventEnd})),renderer:performance.getEntriesByType('resource').filter(e=>e.name.includes('dist/table3d')).map(e=>({durationMs:e.duration,transferSize:e.transferSize,decodedBytes:e.decodedBodySize}))}));
  const cameraChooser=page.waitForEvent('filechooser');await tap('camera');await(await cameraChooser).setFiles(file);await page.waitForFunction(()=>!!photoBlob);check('capture-routing',await page.locator('#camera-input').getAttribute('capture')==='environment','Synthetic file via camera input; OS camera not simulated');
  const q=[{x:.08,y:.92},{x:.93,y:.85},{x:.67,y:.14},{x:.36,y:.18}];await tap('edit-calibrate');
  for(let i=0;i<4;i++){const h=await page.locator('.corner').nth(i).boundingBox(),r=await page.locator('#stage').boundingBox();await page.mouse.move(h.x+h.width/2,h.y+h.height/2);await page.mouse.down();await page.mouse.move(r.x+q[i].x*r.width,r.y+q[i].y*r.height,{steps:5});await page.mouse.up();}await tap('calibration-done');

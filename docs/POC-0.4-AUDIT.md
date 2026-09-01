@@ -10,7 +10,7 @@ The existing POC 0.4 was extended, not rebuilt. No AR or new backend was added.
 - Direct cloud Chrome interaction exercised the actual public site: synthetic photo selection, corner adjustment, guest counts, Fit after enlargement, Item/Setting modes, three category selectors and photo/arrangement reload. WebGL is disabled in that browser environment; its 2D fallback worked. It is not evidence of working 3D on Chrome hardware.
 - Actual 3D: Playwright 1.62.1 mobile WebKit, Linux runner, Mesa software WebGL2, Three.js r185, iPhone-sized viewports and touch enabled. Not physical Safari/iPhone hardware.
 - Native UI tests use the real deployed HTML, JS and bundle. Fault injection is explicitly limited to browser capabilities/storage failures and synthetic multitouch events. `live-qa.cjs` uses native controls and DOM observations without writing application state.
-- Final run and measured results: appended after deployment verification below. Raw reports and screenshots are retained in the workflow's `webkit-mobile-preview` and `live-pages-qa` artifacts. The latter is the actual public-site result; `/validation/` contains the corresponding pre-deployment test artifacts.
+- Per-check pass/fail and measured results are generated in `audit.json`, including the exact commit, timestamp and target URL. [Pre-deployment results](https://topcod80.github.io/gastrona-table-styler/validation/audit.json) are published with the site; the `live-pages-qa` workflow artifact contains the post-deployment results. Raw reports and screenshots are retained in the workflow's `webkit-mobile-preview` and `live-pages-qa` artifacts. The latter is the actual public-site result; `/validation/` contains the corresponding pre-deployment test artifacts.
 
 ## Reproduced issues and fixes
 
@@ -32,7 +32,7 @@ The contrast criterion follows [W3C WCAG 2.2 SC 1.4.3](https://www.w3.org/WAI/WC
 
 ## Complete test matrix
 
-L = `tests/logic.cjs`; I = `tests/interaction.cjs`; U = `tests/live-qa.cjs`; T = `tests/three.cjs`; A = `tests/audit.cjs`; H = `tests/frame-health.cjs`; M = `tests/models.cjs`. Automated coverage below is subject to the final gate results recorded at the end of this document.
+L = `tests/logic.cjs`; I = `tests/interaction.cjs`; U = `tests/live-qa.cjs`; T = `tests/three.cjs`; A = `tests/audit.cjs`; H = `tests/frame-health.cjs`; M = `tests/models.cjs`. The workflow gates deployment on these regressions, then repeats U/T/A against the actual deployed URL. Physical-device and visual limitations are explicitly marked; passing automation does not convert those into passes.
 
 | Area / case | Method and acceptance | Coverage / limitation |
 |---|---|---|
@@ -135,3 +135,13 @@ Physical iPhone tests still required, explicitly:
 8. Real table photos under varied lighting: plate contact, glass translucency, plausible heights, correct seat orientation and camera matching.
 
 **AR readiness: not yet.** These tests can establish a more robust photo-based prototype. They do not validate live-camera tracking, occlusion, camera permissions or iPhone thermal limits. Complete the physical-device and real-photo acceptance pass before committing to POC 1.0 live-camera AR.
+
+## Measured checkpoints and release verification
+
+The completed original-site baseline ran 216 cycles in 180.5 seconds. It held 5 geometries and 5 textures throughout. Its final continuous benchmark reported 59.5 FPS / 2.18 ms CPU at reduced quality (55 calls, 25,922 triangles). These numbers are not directly comparable with the newer inclusive CPU metric or standard-quality rendering.
+
+The repaired renderer checkpoint at `2e4ed65b2f538170619e6665f4c11cb138f95968` passed all 57 audit checks before deployment in [run 33544555176](https://github.com/Topcod80/gastrona-table-styler/actions/runs/33544555176). It completed 147 cycles in 181.0 seconds at standard quality. The following three-second benchmark measured 33.0 FPS, 5.35 ms render/overlay CPU per frame, 32 ms p95 frame interval, 73 draw calls, 35,474 triangles, 5 geometries, 5 textures, 11 materials and about 4.2 MiB estimated graphics allocations. Live photo object URLs remained at one and Undo entries at or below 25. Long Tasks API was unavailable; the timer-lag proxy observed delays, with a 91 ms maximum. This checkpoint precedes the final lighting-normal correction and additional 3D reset/order checks.
+
+For the final build, use the commit-stamped generated reports and the successful final workflow rather than treating the checkpoint as a physical-iPhone or cold-network benchmark. `initialLoading` records a fresh browser-context navigation and renderer-resource timing; `loading` records the later warm reload. Zero cache/resource-timing values are retained as unavailable, not invented transfer measurements.
+
+The deployment job checks each shipped application file and the generated Three.js bundle byte-for-byte before running public-site UI and stress tests. It publishes only application files and synthetic QA images/metrics. No selected personal table photo is included in repository writes, workflow uploads or Pages deployment.
